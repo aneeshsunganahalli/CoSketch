@@ -81,7 +81,7 @@ const MiroWhiteboard: React.FC<WhiteboardProps> = ({ className = '' }) => {
   // Unified helper functions
   const eraseAtPoint = (pointer: Point) => {
     if (!fabricRef.current) return;
-    
+
     const canvas = fabricRef.current;
     const objects = canvas.getObjects();
     const objectsToRemove: FabricObject[] = [];
@@ -107,19 +107,25 @@ const MiroWhiteboard: React.FC<WhiteboardProps> = ({ className = '' }) => {
     }
   };
 
-  // History management - completely reimplemented
+  // Updated history management with better state handling
   const saveHistory = useCallback(() => {
-    if (!fabricRef.current) return;
+    if (!fabricRef.current || isUpdatingFromHistory) return;
 
     try {
-      // Get canvas state
-      const canvasState = fabricRef.current.toJSON();
+      const canvas = fabricRef.current;
+
+      // Ensure canvas has white background before saving
+      canvas.backgroundColor = '#ffffff';
+
+      // Get canvas state with all objects
+      const canvasState = canvas.toJSON();
       canvasState.backgroundColor = '#ffffff';
+
       const stateString = JSON.stringify(canvasState);
-      
+
       // Don't save duplicate states
-      if (historyRef.current.length > 0 && 
-          historyRef.current[historyIndexRef.current] === stateString) {
+      if (historyRef.current.length > 0 &&
+        historyRef.current[historyIndexRef.current] === stateString) {
         return;
       }
 
@@ -140,7 +146,7 @@ const MiroWhiteboard: React.FC<WhiteboardProps> = ({ className = '' }) => {
     } catch (error) {
       console.error('Error saving history:', error);
     }
-  }, []);
+  }, [isUpdatingFromHistory]);
 
   const setupCanvasEvents = useCallback(() => {
     if (!fabricRef.current) return;
@@ -232,17 +238,40 @@ const MiroWhiteboard: React.FC<WhiteboardProps> = ({ className = '' }) => {
       opt.e.stopPropagation();
     });
 
-    // Unified history handler - only save when not updating from history
-    const saveHistoryDelayed = () => {
-      if (!isUpdatingFromHistory) {
-        setTimeout(() => saveHistory(), 100);
-      }
+    // Updated history saving with debounce
+    let saveTimeout: NodeJS.Timeout;
+
+    const debouncedSaveHistory = () => {
+      if (isUpdatingFromHistory) return;
+
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(() => {
+        saveHistory();
+      }, 300); // Longer debounce to prevent excessive saves
     };
 
-    canvas.on('path:created', saveHistoryDelayed);
-    canvas.on('object:added', saveHistoryDelayed);
-    canvas.on('object:removed', saveHistoryDelayed);
-    canvas.on('object:modified', saveHistoryDelayed);
+    // History events - only save when not updating from history
+    canvas.on('path:created', debouncedSaveHistory);
+    canvas.on('object:added', (e) => {
+      // Only save if this wasn't triggered by loadFromJSON
+      if (!isUpdatingFromHistory) {
+        debouncedSaveHistory();
+      }
+    });
+    canvas.on('object:removed', (e) => {
+      if (!isUpdatingFromHistory) {
+        debouncedSaveHistory();
+      }
+    });
+    canvas.on('object:modified', (e) => {
+      if (!isUpdatingFromHistory) {
+        debouncedSaveHistory();
+      }
+    });
+
+    return () => {
+      clearTimeout(saveTimeout);
+    };
   }, [state.selectedTool, state.isPanning, isDragging, isUpdatingFromHistory, saveHistory]);
 
   const addShapeAtPoint = (pointer: Point) => {
@@ -313,33 +342,36 @@ const MiroWhiteboard: React.FC<WhiteboardProps> = ({ className = '' }) => {
   const undo = useCallback(() => {
     if (!fabricRef.current || historyIndexRef.current <= 0) return;
 
-    setIsUpdatingFromHistory(true);
-    
-    // Temporarily disable all event listeners
     const canvas = fabricRef.current;
-    canvas.off();
-    
+    setIsUpdatingFromHistory(true);
+
     try {
       historyIndexRef.current--;
       const previousState = historyRef.current[historyIndexRef.current];
-      
-      canvas.loadFromJSON(previousState, () => {
-        if (fabricRef.current) {
-          fabricRef.current.backgroundColor = '#ffffff';
-          fabricRef.current.renderAll();
-          
-          // Re-setup events after a delay
-          setTimeout(() => {
-            setupCanvasEvents();
+      const stateObj = JSON.parse(previousState);
+
+      // Clear canvas first
+      canvas.clear();
+
+      // Set background
+      canvas.backgroundColor = '#ffffff';
+
+      // Load the state synchronously if possible
+      canvas.loadFromJSON(stateObj, () => {
+        // Force immediate render
+        canvas.renderAll();
+
+        // Small delay to ensure everything is rendered
+        requestAnimationFrame(() => {
+          if (fabricRef.current) {
+            fabricRef.current.renderAll();
             setIsUpdatingFromHistory(false);
-          }, 100);
-        }
+          }
+        });
       });
-      
+
     } catch (error) {
       console.error('Error during undo:', error);
-      historyIndexRef.current++;
-      setupCanvasEvents();
       setIsUpdatingFromHistory(false);
     }
   }, []);
@@ -347,33 +379,36 @@ const MiroWhiteboard: React.FC<WhiteboardProps> = ({ className = '' }) => {
   const redo = useCallback(() => {
     if (!fabricRef.current || historyIndexRef.current >= historyRef.current.length - 1) return;
 
-    setIsUpdatingFromHistory(true);
-    
-    // Temporarily disable all event listeners
     const canvas = fabricRef.current;
-    canvas.off();
-    
+    setIsUpdatingFromHistory(true);
+
     try {
       historyIndexRef.current++;
       const nextState = historyRef.current[historyIndexRef.current];
-      
-      canvas.loadFromJSON(nextState, () => {
-        if (fabricRef.current) {
-          fabricRef.current.backgroundColor = '#ffffff';
-          fabricRef.current.renderAll();
-          
-          // Re-setup events after a delay
-          setTimeout(() => {
-            setupCanvasEvents();
+      const stateObj = JSON.parse(nextState);
+
+      // Clear canvas first
+      canvas.clear();
+
+      // Set background
+      canvas.backgroundColor = '#ffffff';
+
+      // Load the state
+      canvas.loadFromJSON(stateObj, () => {
+        // Force immediate render
+        canvas.renderAll();
+
+        // Small delay to ensure everything is rendered
+        requestAnimationFrame(() => {
+          if (fabricRef.current) {
+            fabricRef.current.renderAll();
             setIsUpdatingFromHistory(false);
-          }, 100);
-        }
+          }
+        });
       });
-      
+
     } catch (error) {
       console.error('Error during redo:', error);
-      historyIndexRef.current--;
-      setupCanvasEvents();
       setIsUpdatingFromHistory(false);
     }
   }, []);
@@ -443,7 +478,7 @@ const MiroWhiteboard: React.FC<WhiteboardProps> = ({ className = '' }) => {
   return (
     <div className={`relative w-full h-screen bg-gray-100 overflow-hidden ${className}`}>
       {/* Infinite Canvas */}
-      <div 
+      <div
         ref={containerRef}
         className="absolute inset-0 bg-white"
         style={{
