@@ -1,13 +1,19 @@
 import express, { Request, Response } from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import cors from "cors";
+import authRouter from "./routes/auth.route";
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
+// Middleware
 app.use(express.json());
+app.use(cors({
+  origin: process.env.CLIENT_URL || "http://localhost:3000",
+  credentials: true
+}));
 
 // Database Connection Function
 const connectDB = async (): Promise<void> => {
@@ -21,24 +27,18 @@ const connectDB = async (): Promise<void> => {
     console.log("✅ Database Connected Successfully");
   } catch (error) {
     console.error("❌ Database connection failed:", error);
-    process.exit(1); // Exit process with failure
+    process.exit(1);
   }
 };
 
+// Routes
 app.get("/", (req: Request, res: Response) => {
   res.json({message: "Hello from CoSketch"});
 });
 
-// Starting server only if database connection established
-const startServer = async (): Promise<void> => {
-  await connectDB();
-  
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-  });
-};
+app.use('/auth', authRouter);
 
-startServer().catch((error) => {
-  console.error("Failed to start server:", error);
-  process.exit(1);
-});
+// Initialize database connection
+connectDB();
+
+export default app;
