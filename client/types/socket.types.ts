@@ -1,7 +1,19 @@
 export interface DrawData {
-  type: 'path' | 'object' | 'clear' | 'undo' | 'redo';
+  type: 'path' | 'object' | 'clear' | 'undo' | 'redo' | 'cursor' | 'fabric-path' | 'fabric-object';
   data: any;
   userId?: string;
+  timestamp?: number;
+}
+
+export interface BroadcastMessage {
+  tool?: string;
+  type?: string;
+  data?: any;
+  x?: number;
+  y?: number;
+  color?: string;
+  size?: number;
+  socket?: string;
   timestamp?: number;
 }
 
@@ -9,6 +21,7 @@ export interface RoomData {
   [roomId: string]: {
     users: Set<string>;
     canvasState?: string;
+    boardData?: any[];
   };
 }
 
@@ -16,6 +29,9 @@ export interface UserCursor {
   userId: string;
   x: number;
   y: number;
+  color?: string;
+  size?: number;
+  tool?: string;
 }
 
 export interface RoomUser {
@@ -47,4 +63,7 @@ export interface CursorMoveEvent {
   userId: string;
   x: number;
   y: number;
+  color?: string;
+  size?: number;
+  tool?: string;
 }

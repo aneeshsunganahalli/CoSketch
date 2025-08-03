@@ -3,8 +3,8 @@
 import Whiteboard from "@/components/WhiteBoard";
 import { useParams } from "next/navigation";
 import { useSocket } from "@/hooks/useSocket";
-import React, { useState, useEffect } from "react";
-import { DrawData, UserJoinedEvent, UserLeftEvent, RoomUsersEvent } from "@/types/socket.types";
+import React, { useState, useEffect, useRef } from "react";
+import { DrawData, BroadcastMessage, UserJoinedEvent, UserLeftEvent, RoomUsersEvent } from "@/types/socket.types";
 
 const Room = () => {
   const { id } = useParams();
@@ -12,11 +12,13 @@ const Room = () => {
   
   const [userCount, setUserCount] = useState(1);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+  const whiteboardRef = useRef<any>(null);
 
   const { 
     isConnected, 
     socketId,
     emitDraw,
+    emitBroadcast,
     emitCanvasState,
     emitClearCanvas,
     emitCursorMove 
@@ -34,6 +36,19 @@ const Room = () => {
       console.log('Room users:', data);
       setUserCount(data.userCount);
     },
+    onBroadcast: (data: BroadcastMessage) => {
+      console.log('Room received broadcast:', data);
+      // Forward broadcast events to whiteboard
+      if (whiteboardRef.current?.handleRemoteMessage) {
+        whiteboardRef.current.handleRemoteMessage(data);
+      }
+    },
+    onBoardData: (data: { _children: any[] }) => {
+      // Load existing board data when joining room
+      if (whiteboardRef.current?.loadBoardData) {
+        whiteboardRef.current.loadBoardData(data._children);
+      }
+    },
     onDraw: (data: DrawData) => {
       // This will be handled by the Whiteboard component
       console.log('Received draw data:', data);
@@ -44,7 +59,9 @@ const Room = () => {
     },
     onClearCanvas: () => {
       // This will be handled by the Whiteboard component
-      console.log('Canvas cleared by another user');
+      if (whiteboardRef.current?.handleRemoteClear) {
+        whiteboardRef.current.handleRemoteClear();
+      }
     }
   });
 
@@ -97,7 +114,14 @@ const Room = () => {
       
       {/* Full-screen whiteboard */}
       <Whiteboard 
-        className="w-full h-full" 
+        ref={whiteboardRef}
+        className="w-full h-full"
+        roomId={roomId}
+        socketService={{
+          emitBroadcast,
+          emitCursorMove,
+          emitClearCanvas
+        }}
       />
     </main>
   )

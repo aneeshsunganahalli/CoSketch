@@ -11,6 +11,18 @@ import {
 
 type SocketInstance = ReturnType<typeof io>;
 
+interface BroadcastMessage {
+  tool?: string;
+  type?: string;
+  data?: any;
+  x?: number;
+  y?: number;
+  color?: string;
+  size?: number;
+  socket?: string;
+  timestamp?: number;
+}
+
 class SocketService {
   private static instance: SocketService | null = null;
   private socket: SocketInstance | null = null;
@@ -119,6 +131,14 @@ class SocketService {
   }
 
   // Drawing methods
+  emitBroadcast(message: BroadcastMessage) {
+    if (!this.socket || !this.roomId) return;
+    this.socket.emit('broadcast', {
+      ...message,
+      data: { board: this.roomId, ...message.data }
+    });
+  }
+
   emitDraw(data: DrawData) {
     if (!this.socket || !this.roomId) return;
     this.socket.emit('draw', { roomId: this.roomId, data });
@@ -134,12 +154,26 @@ class SocketService {
     this.socket.emit('clear-canvas', { roomId: this.roomId });
   }
 
-  emitCursorMove(x: number, y: number) {
+  emitCursorMove(x: number, y: number, color?: string, size?: number, tool?: string) {
     if (!this.socket || !this.roomId) return;
-    this.socket.emit('cursor-move', { roomId: this.roomId, x, y });
+    this.socket.emit('cursor-move', { 
+      roomId: this.roomId, 
+      x, 
+      y, 
+      color, 
+      size, 
+      tool 
+    });
   }
 
   // Event listeners
+  onBroadcast(callback: (data: BroadcastMessage) => void) {
+    this.socket?.on('broadcast', callback);
+  }
+
+  onBoardData(callback: (data: { _children: any[] }) => void) {
+    this.socket?.on('board-data', callback);
+  }
   onDraw(callback: (data: DrawData) => void) {
     this.socket?.on('draw', callback);
   }
@@ -174,6 +208,22 @@ class SocketService {
       this.socket?.off('draw', callback);
     } else {
       this.socket?.off('draw');
+    }
+  }
+
+  offBroadcast(callback?: (data: BroadcastMessage) => void) {
+    if (callback) {
+      this.socket?.off('broadcast', callback);
+    } else {
+      this.socket?.off('broadcast');
+    }
+  }
+
+  offBoardData(callback?: (data: { _children: any[] }) => void) {
+    if (callback) {
+      this.socket?.off('board-data', callback);
+    } else {
+      this.socket?.off('board-data');
     }
   }
 

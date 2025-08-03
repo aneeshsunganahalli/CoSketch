@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { socketService } from '@/lib/socket';
 import { 
   DrawData, 
+  BroadcastMessage,
   UserJoinedEvent, 
   UserLeftEvent, 
   RoomUsersEvent,
@@ -12,6 +13,8 @@ import {
 interface UseSocketProps {
   roomId: string;
   onDraw?: (data: DrawData) => void;
+  onBroadcast?: (data: BroadcastMessage) => void;
+  onBoardData?: (data: { _children: any[] }) => void;
   onCanvasState?: (state: string) => void;
   onClearCanvas?: (data: ClearCanvasEvent) => void;
   onUserJoined?: (data: UserJoinedEvent) => void;
@@ -23,6 +26,8 @@ interface UseSocketProps {
 export const useSocket = ({
   roomId,
   onDraw,
+  onBroadcast,
+  onBoardData,
   onCanvasState,
   onClearCanvas,
   onUserJoined,
@@ -38,6 +43,8 @@ export const useSocket = ({
   // Store callback refs to avoid dependency issues
   const callbackRefs = useRef({
     onDraw,
+    onBroadcast,
+    onBoardData,
     onCanvasState,
     onClearCanvas,
     onUserJoined,
@@ -50,6 +57,8 @@ export const useSocket = ({
   useEffect(() => {
     callbackRefs.current = {
       onDraw,
+      onBroadcast,
+      onBoardData,
       onCanvasState,
       onClearCanvas,
       onUserJoined,
@@ -57,7 +66,7 @@ export const useSocket = ({
       onRoomUsers,
       onCursorMove,
     };
-  }, [onDraw, onCanvasState, onClearCanvas, onUserJoined, onUserLeft, onRoomUsers, onCursorMove]);
+  }, [onDraw, onBroadcast, onBoardData, onCanvasState, onClearCanvas, onUserJoined, onUserLeft, onRoomUsers, onCursorMove]);
 
   // Initialize socket connection only once
   useEffect(() => {
@@ -86,6 +95,8 @@ export const useSocket = ({
 
     // Set up event listeners with stable references
     const handleDraw = (data: DrawData) => callbackRefs.current.onDraw?.(data);
+    const handleBroadcast = (data: BroadcastMessage) => callbackRefs.current.onBroadcast?.(data);
+    const handleBoardData = (data: { _children: any[] }) => callbackRefs.current.onBoardData?.(data);
     const handleCanvasState = (state: string) => callbackRefs.current.onCanvasState?.(state);
     const handleClearCanvas = (data: ClearCanvasEvent) => callbackRefs.current.onClearCanvas?.(data);
     const handleUserJoined = (data: UserJoinedEvent) => callbackRefs.current.onUserJoined?.(data);
@@ -94,6 +105,8 @@ export const useSocket = ({
     const handleCursorMove = (data: CursorMoveEvent) => callbackRefs.current.onCursorMove?.(data);
 
     socketService.onDraw(handleDraw);
+    socketService.onBroadcast(handleBroadcast);
+    socketService.onBoardData(handleBoardData);
     socketService.onCanvasState(handleCanvasState);
     socketService.onClearCanvas(handleClearCanvas);
     socketService.onUserJoined(handleUserJoined);
@@ -109,6 +122,8 @@ export const useSocket = ({
       
       // Remove event listeners
       socketService.offDraw(handleDraw);
+      socketService.offBroadcast(handleBroadcast);
+      socketService.offBoardData(handleBoardData);
       socketService.offCanvasState(handleCanvasState);
       socketService.offClearCanvas(handleClearCanvas);
       socketService.offUserJoined(handleUserJoined);
@@ -141,8 +156,10 @@ export const useSocket = ({
     isConnected,
     socketId,
     emitDraw: (data: DrawData) => socketService.emitDraw(data),
+    emitBroadcast: (message: BroadcastMessage) => socketService.emitBroadcast(message),
     emitCanvasState: (state: string) => socketService.emitCanvasState(state),
     emitClearCanvas: () => socketService.emitClearCanvas(),
-    emitCursorMove: (x: number, y: number) => socketService.emitCursorMove(x, y),
+    emitCursorMove: (x: number, y: number, color?: string, size?: number, tool?: string) => 
+      socketService.emitCursorMove(x, y, color, size, tool),
   };
 };

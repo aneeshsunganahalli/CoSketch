@@ -1,17 +1,43 @@
 import { Server, Socket } from "socket.io";
 
 interface DrawData {
-  type: 'path' | 'object' | 'clear' | 'undo' | 'redo';
+  type: 'path' | 'object' | 'clear' | 'undo' | 'redo' | 'cursor' | 'fabric-path' | 'fabric-object';
   data: any;
   userId?: string;
   timestamp?: number;
+  tool?: string;
+  x?: number;
+  y?: number;
+  color?: string;
+  size?: number;
+}
+
+interface CursorData {
+  x: number;
+  y: number;
+  color?: string;
+  size?: number;
+  tool?: string;
 }
 
 interface RoomData {
   [roomId: string]: {
     users: Set<string>;
     canvasState?: string;
+    boardData?: any[];
   };
+}
+
+interface BoardMessage {
+  tool?: string;
+  type?: string;
+  data?: any;
+  x?: number;
+  y?: number;
+  color?: string;
+  size?: number;
+  userId?: string;
+  timestamp?: number;
 }
 
 export default function registerSocketHandlers(io: Server) {
@@ -38,12 +64,20 @@ export default function registerSocketHandlers(io: Server) {
       socket.join(roomId);
       
       if (!rooms[roomId]) {
-        rooms[roomId] = { users: new Set() };
+        rooms[roomId] = { 
+          users: new Set(),
+          boardData: []
+        };
       }
       
       rooms[roomId].users.add(socket.id);
       userRooms.set(socket.id, roomId);
       console.log(`🏠 User ${socket.id} joined room ${roomId} (${rooms[roomId].users.size} users)`);
+      
+      // Send existing board data to new user
+      if (rooms[roomId].boardData && rooms[roomId].boardData.length > 0) {
+        socket.emit("board-data", { _children: rooms[roomId].boardData });
+      }
       
       socket.to(roomId).emit("user-joined", {
         userId: socket.id,
@@ -58,6 +92,41 @@ export default function registerSocketHandlers(io: Server) {
         userCount: rooms[roomId].users.size,
         users: Array.from(rooms[roomId].users)
       });
+    });
+
+    // Whitebophir-style broadcast handler for real-time drawing
+    socket.on("broadcast", (message: BoardMessage) => {
+      const roomId = message.data?.board || userRooms.get(socket.id);
+      if (!roomId || !socket.rooms.has(roomId)) return;
+
+      // Add socket ID and timestamp to message
+      const enrichedMessage = {
+        ...message,
+        socket: socket.id,
+        timestamp: Date.now()
+      };
+
+      // Handle cursor updates (don't save to board data)
+      if (message.tool === "Cursor" || message.type === "cursor") {
+        socket.to(roomId).emit("broadcast", enrichedMessage);
+        return;
+      }
+
+      // Save drawing data to room's board data
+      if (rooms[roomId] && message.tool && message.tool !== "Cursor") {
+        if (!rooms[roomId].boardData) {
+          rooms[roomId].boardData = [];
+        }
+        rooms[roomId].boardData.push(enrichedMessage);
+        
+        // Keep only last 1000 drawing operations to prevent memory issues
+        if (rooms[roomId].boardData!.length > 1000) {
+          rooms[roomId].boardData = rooms[roomId].boardData!.slice(-1000);
+        }
+      }
+
+      // Broadcast to other users in the room
+      socket.to(roomId).emit("broadcast", enrichedMessage);
     });
 
     socket.on("draw", ({ roomId, data }: { roomId: string; data: DrawData }) => {
@@ -77,17 +146,28 @@ export default function registerSocketHandlers(io: Server) {
       socket.to(roomId).emit("canvas-state", state);
     });
 
-    socket.on("cursor-move", ({ roomId, x, y }: { roomId: string; x: number; y: number }) => {
+    socket.on("cursor-move", ({ roomId, x, y, color, size, tool }: { 
+      roomId: string; 
+      x: number; 
+      y: number;
+      color?: string;
+      size?: number;
+      tool?: string;
+    }) => {
       socket.to(roomId).emit("cursor-move", {
         userId: socket.id,
         x,
-        y
+        y,
+        color,
+        size,
+        tool
       });
     });
 
     socket.on("clear-canvas", ({ roomId }: { roomId: string }) => {
       if (rooms[roomId]) {
         rooms[roomId].canvasState = undefined;
+        rooms[roomId].boardData = []; // Clear board data
       }
       socket.to(roomId).emit("clear-canvas", { userId: socket.id });
     });

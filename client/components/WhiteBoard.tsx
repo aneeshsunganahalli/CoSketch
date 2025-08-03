@@ -1,21 +1,42 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Canvas, PencilBrush, Rect, FabricObject, Point, Textbox } from 'fabric';
+import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
+import { Canvas, PencilBrush, Rect, FabricObject, Point, Textbox, Path, util } from 'fabric';
 import { Toolbar } from './whiteboard/Toolbar';
 import { CanvasControls } from './whiteboard/CanvasControls';
 import { WhiteboardState } from './whiteboard/types';
+import { BroadcastMessage, CursorMoveEvent } from '@/types/socket.types';
+import RemoteCursors from './whiteboard/RemoteCursors';
 
 interface WhiteboardProps {
   className?: string;
+  roomId?: string;
+  socketService?: {
+    emitBroadcast: (message: BroadcastMessage) => void;
+    emitCursorMove: (x: number, y: number, color?: string, size?: number, tool?: string) => void;
+    emitClearCanvas: () => void;
+  };
 }
 
-const MiroWhiteboard: React.FC<WhiteboardProps> = ({ className = '' }) => {
+interface RemoteCursor {
+  userId: string;
+  x: number;
+  y: number;
+  color?: string;
+  size?: number;
+  tool?: string;
+  lastSeen: number;
+}
+
+const MiroWhiteboard = forwardRef<any, WhiteboardProps>(({ className = '', roomId, socketService }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fabricRef = useRef<Canvas | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<string[]>([]);
   const historyIndexRef = useRef(-1);
+  const lastCursorUpdate = useRef<number>(0);
+  const remoteCursors = useRef<Map<string, RemoteCursor>>(new Map());
+  const [, setRemoteCursorsUpdate] = useState(0); // Force re-render for cursor updates
 
   // Miro-like state management
   const [state, setState] = useState<WhiteboardState>({
@@ -32,7 +53,129 @@ const MiroWhiteboard: React.FC<WhiteboardProps> = ({ className = '' }) => {
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
   const [isUpdatingFromHistory, setIsUpdatingFromHistory] = useState(false);
 
-  // Initialize canvas with Miro-like infinite canvas
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    handleRemoteMessage: (message: BroadcastMessage) => {
+      if (message.tool === 'Cursor') {
+        handleRemoteCursor(message);
+      } else {
+        handleRemoteDrawing(message);
+      }
+    },
+    loadBoardData: (boardData: any[]) => {
+      loadExistingBoardData(boardData);
+    },
+    handleRemoteClear: () => {
+      if (fabricRef.current) {
+        fabricRef.current.clear();
+        fabricRef.current.backgroundColor = '#ffffff';
+        fabricRef.current.renderAll();
+      }
+    }
+  }));
+
+  // Handle remote cursor movements
+  const handleRemoteCursor = useCallback((message: BroadcastMessage) => {
+    if (!message.socket || !message.x || !message.y) return;
+    
+    const cursor: RemoteCursor = {
+      userId: message.socket,
+      x: message.x,
+      y: message.y,
+      color: message.color,
+      size: message.size,
+      tool: message.tool,
+      lastSeen: Date.now()
+    };
+    
+    remoteCursors.current.set(message.socket, cursor);
+    setRemoteCursorsUpdate(prev => prev + 1); // Force re-render
+  }, []);
+
+  // Handle remote drawing events
+  const handleRemoteDrawing = useCallback((message: BroadcastMessage) => {
+    if (!fabricRef.current || isUpdatingFromHistory) return;
+    
+    console.log('Received remote drawing message:', message);
+    
+    const canvas = fabricRef.current;
+    
+    // Temporarily set flag to prevent re-broadcasting
+    setIsUpdatingFromHistory(true);
+    
+    try {
+      // Handle paths (the most common drawing type)
+      if ((message.tool === 'pen' || message.tool === 'marker') && message.data) {
+        console.log('Creating path from remote data:', message.data);
+        
+        // Use Path.fromObject with proper async handling
+        Path.fromObject(message.data).then((path) => {
+          if (path) {
+            canvas.add(path);
+            canvas.renderAll();
+            console.log('Added remote path to canvas');
+          }
+        }).catch((error) => {
+          console.error('Error creating path from remote data:', error);
+        });
+      }
+    } catch (error) {
+      console.error('Error handling remote drawing:', error);
+    } finally {
+      // Reset flag after a short delay
+      setTimeout(() => {
+        setIsUpdatingFromHistory(false);
+      }, 100);
+    }
+  }, [isUpdatingFromHistory]);
+
+  // Load existing board data when joining a room
+  const loadExistingBoardData = useCallback((boardData: any[]) => {
+    if (!fabricRef.current || !boardData.length) return;
+    
+    console.log('Loading existing board data:', boardData);
+    // TODO: Process and render existing board data
+  }, []);
+
+  // Enhanced cursor tracking with socket emission
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!fabricRef.current || !socketService) return;
+    
+    const canvas = fabricRef.current;
+    const rect = canvas.getElement().getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    const now = Date.now();
+    const CURSOR_UPDATE_THROTTLE = 50; // 20fps for cursor updates
+    
+    if (now - lastCursorUpdate.current > CURSOR_UPDATE_THROTTLE) {
+      socketService.emitCursorMove(x, y, state.brushColor, state.brushSize, state.selectedTool);
+      lastCursorUpdate.current = now;
+      
+      // Also emit as broadcast message for whitebophir compatibility
+      socketService.emitBroadcast({
+        tool: 'Cursor',
+        type: 'update',
+        x,
+        y,
+        color: state.brushColor,
+        size: state.brushSize
+      });
+    }
+  }, [socketService, state.brushColor, state.brushSize, state.selectedTool]);
+
+  // Add mouse move listener for cursor tracking
+  useEffect(() => {
+    if (!containerRef.current || !socketService) return;
+    
+    const container = containerRef.current;
+    container.addEventListener('mousemove', handleMouseMove);
+    
+    return () => {
+      container.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [handleMouseMove, socketService]);
   useEffect(() => {
     if (!canvasRef.current || !containerRef.current) return;
 
@@ -238,7 +381,7 @@ const MiroWhiteboard: React.FC<WhiteboardProps> = ({ className = '' }) => {
       opt.e.stopPropagation();
     });
 
-    // Updated history saving with debounce
+    // Updated history saving with debounce and socket broadcasting
     let saveTimeout: NodeJS.Timeout;
 
     const debouncedSaveHistory = () => {
@@ -250,22 +393,62 @@ const MiroWhiteboard: React.FC<WhiteboardProps> = ({ className = '' }) => {
       }, 300); // Longer debounce to prevent excessive saves
     };
 
+    const broadcastCanvasEvent = (eventType: string, data?: any) => {
+      if (!socketService || isUpdatingFromHistory) return;
+      
+      socketService.emitBroadcast({
+        tool: 'Canvas',
+        type: eventType,
+        data: data
+      });
+    };
+
     // History events - only save when not updating from history
-    canvas.on('path:created', debouncedSaveHistory);
+    canvas.on('path:created', (e) => {
+      if (!isUpdatingFromHistory) {
+        debouncedSaveHistory();
+        
+        // Broadcast path creation for real-time collaboration
+        if (socketService && e.path) {
+          const pathData = e.path.toObject();
+          console.log('Broadcasting path creation:', pathData);
+          socketService.emitBroadcast({
+            tool: state.selectedTool === 'marker' ? 'marker' : 'pen',
+            type: 'draw',
+            data: pathData
+          });
+        }
+      }
+    });
+
     canvas.on('object:added', (e) => {
       // Only save if this wasn't triggered by loadFromJSON
       if (!isUpdatingFromHistory) {
         debouncedSaveHistory();
+        
+        // Broadcast object addition
+        if (socketService && e.target) {
+          const objectData = e.target.toObject();
+          socketService.emitBroadcast({
+            tool: state.selectedTool,
+            type: 'add',
+            data: objectData
+          });
+        }
       }
     });
+
     canvas.on('object:removed', (e) => {
       if (!isUpdatingFromHistory) {
         debouncedSaveHistory();
+        broadcastCanvasEvent('remove', e.target?.toObject());
       }
     });
+
     canvas.on('object:modified', (e) => {
       if (!isUpdatingFromHistory) {
         debouncedSaveHistory();
+        broadcastCanvasEvent('modify', e.target?.toObject());
       }
     });
 
@@ -417,8 +600,14 @@ const MiroWhiteboard: React.FC<WhiteboardProps> = ({ className = '' }) => {
     if (!fabricRef.current) return;
     fabricRef.current.clear();
     fabricRef.current.backgroundColor = '#ffffff';
+    
+    // Emit socket event for real-time collaboration
+    if (socketService) {
+      socketService.emitClearCanvas();
+    }
+    
     saveHistory();
-  }, [saveHistory]);
+  }, [saveHistory, socketService]);
 
   const exportCanvas = () => {
     if (!fabricRef.current) return;
@@ -494,6 +683,12 @@ const MiroWhiteboard: React.FC<WhiteboardProps> = ({ className = '' }) => {
           className="absolute inset-0"
           style={{ cursor: getCursor() }}
         />
+        
+        {/* Remote cursors overlay */}
+        <RemoteCursors 
+          cursors={remoteCursors.current}
+          containerRef={containerRef}
+        />
       </div>
 
       {/* Miro-like UI Components */}
@@ -517,6 +712,8 @@ const MiroWhiteboard: React.FC<WhiteboardProps> = ({ className = '' }) => {
       />
     </div>
   );
-};
+});
+
+MiroWhiteboard.displayName = 'MiroWhiteboard';
 
 export default MiroWhiteboard;
