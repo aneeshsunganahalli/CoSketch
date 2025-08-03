@@ -74,9 +74,30 @@ export default function registerSocketHandlers(io: Server) {
       userRooms.set(socket.id, roomId);
       console.log(`🏠 User ${socket.id} joined room ${roomId} (${rooms[roomId].users.size} users)`);
       
-      // Send existing board data to new user
+      // Send existing board data to new user immediately
       if (rooms[roomId].boardData && rooms[roomId].boardData.length > 0) {
-        socket.emit("board-data", { _children: rooms[roomId].boardData });
+        console.log(`📋 Sending ${rooms[roomId].boardData.length} existing drawings to new user ${socket.id}`);
+        socket.emit("board-data", { 
+          _children: rooms[roomId].boardData,
+          roomId: roomId 
+        });
+      }
+      
+      // Also send canvas state if available
+      if (rooms[roomId].canvasState) {
+        console.log(`🎨 Sending canvas state to new user ${socket.id}`);
+        try {
+          const canvasData = JSON.parse(rooms[roomId].canvasState);
+          socket.emit("broadcast", {
+            tool: "CanvasSync",
+            type: "fullState",
+            data: canvasData,
+            socket: "server",
+            timestamp: Date.now()
+          });
+        } catch (error) {
+          console.error('Error parsing canvas state:', error);
+        }
       }
       
       socket.to(roomId).emit("user-joined", {
@@ -108,6 +129,16 @@ export default function registerSocketHandlers(io: Server) {
 
       // Handle cursor updates (don't save to board data)
       if (message.tool === "Cursor" || message.type === "cursor") {
+        socket.to(roomId).emit("broadcast", enrichedMessage);
+        return;
+      }
+
+      // Handle canvas sync requests
+      if (message.tool === "CanvasSync" && message.type === "fullState") {
+        // Update the room's canvas state and broadcast to others
+        if (rooms[roomId]) {
+          rooms[roomId].canvasState = JSON.stringify(message.data);
+        }
         socket.to(roomId).emit("broadcast", enrichedMessage);
         return;
       }

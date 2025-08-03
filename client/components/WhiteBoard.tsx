@@ -58,6 +58,8 @@ const MiroWhiteboard = forwardRef<any, WhiteboardProps>(({ className = '', roomI
     handleRemoteMessage: (message: BroadcastMessage) => {
       if (message.tool === 'Cursor') {
         handleRemoteCursor(message);
+      } else if (message.tool === 'CanvasSync' && message.type === 'fullState') {
+        handleCanvasStateRestore(message.data);
       } else {
         handleRemoteDrawing(message);
       }
@@ -71,6 +73,9 @@ const MiroWhiteboard = forwardRef<any, WhiteboardProps>(({ className = '', roomI
         fabricRef.current.backgroundColor = '#ffffff';
         fabricRef.current.renderAll();
       }
+    },
+    syncCanvas: () => {
+      syncCanvasState();
     }
   }));
 
@@ -129,12 +134,97 @@ const MiroWhiteboard = forwardRef<any, WhiteboardProps>(({ className = '', roomI
     }
   }, [isUpdatingFromHistory]);
 
-  // Load existing board data when joining a room
+  // Enhanced canvas state sync for new users
+  const syncCanvasState = useCallback(() => {
+    if (!fabricRef.current || !socketService || isUpdatingFromHistory) return;
+    
+    try {
+      const canvas = fabricRef.current;
+      const canvasState = canvas.toJSON();
+      const stateString = JSON.stringify(canvasState);
+      
+      // Emit the entire canvas state
+      socketService.emitBroadcast({
+        tool: 'CanvasSync',
+        type: 'fullState',
+        data: canvasState
+      });
+      
+      console.log('Synced canvas state for new users');
+    } catch (error) {
+      console.error('Error syncing canvas state:', error);
+    }
+  }, [socketService, isUpdatingFromHistory]);
+
+  // Handle canvas state restoration
+  const handleCanvasStateRestore = useCallback((canvasState: any) => {
+    if (!fabricRef.current || isUpdatingFromHistory) return;
+    
+    console.log('Restoring canvas state:', canvasState);
+    
+    const canvas = fabricRef.current;
+    setIsUpdatingFromHistory(true);
+    
+    try {
+      canvas.loadFromJSON(canvasState, () => {
+        canvas.renderAll();
+        console.log('Canvas state restored successfully');
+        
+        setTimeout(() => {
+          setIsUpdatingFromHistory(false);
+        }, 100);
+      });
+    } catch (error) {
+      console.error('Error restoring canvas state:', error);
+      setIsUpdatingFromHistory(false);
+    }
+  }, []);
   const loadExistingBoardData = useCallback((boardData: any[]) => {
     if (!fabricRef.current || !boardData.length) return;
     
     console.log('Loading existing board data:', boardData);
-    // TODO: Process and render existing board data
+    
+    const canvas = fabricRef.current;
+    
+    // Set flag to prevent re-broadcasting during load
+    setIsUpdatingFromHistory(true);
+    
+    try {
+      // Process each drawing operation from the board data
+      boardData.forEach((message, index) => {
+        setTimeout(() => {
+          if (!fabricRef.current) return;
+          
+          // Handle different types of drawing messages
+          if (message.tool === 'pen' || message.tool === 'marker') {
+            if (message.data) {
+              console.log(`Loading drawing ${index + 1}/${boardData.length}:`, message.data);
+              
+              // Create path from stored data
+              Path.fromObject(message.data).then((path) => {
+                if (path && fabricRef.current) {
+                  fabricRef.current.add(path);
+                  fabricRef.current.renderAll();
+                }
+              }).catch((error) => {
+                console.error('Error loading path:', error);
+              });
+            }
+          }
+          // Handle other drawing types here if needed
+          
+          // Reset flag after loading the last item
+          if (index === boardData.length - 1) {
+            setTimeout(() => {
+              setIsUpdatingFromHistory(false);
+            }, 200);
+          }
+        }, index * 10); // Small delay between each drawing to prevent overwhelming
+      });
+    } catch (error) {
+      console.error('Error loading board data:', error);
+      setIsUpdatingFromHistory(false);
+    }
   }, []);
 
   // Enhanced cursor tracking with socket emission

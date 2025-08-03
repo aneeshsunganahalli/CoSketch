@@ -27,6 +27,13 @@ const Room = () => {
     onUserJoined: (data: UserJoinedEvent) => {
       console.log('User joined:', data);
       setUserCount(data.userCount);
+      
+      // When a new user joins, sync canvas state to them
+      if (whiteboardRef.current?.syncCanvas) {
+        setTimeout(() => {
+          whiteboardRef.current?.syncCanvas();
+        }, 500); // Small delay to ensure the new user is ready
+      }
     },
     onUserLeft: (data: UserLeftEvent) => {
       console.log('User left:', data);
@@ -44,6 +51,7 @@ const Room = () => {
       }
     },
     onBoardData: (data: { _children: any[] }) => {
+      console.log('Room received board data:', data);
       // Load existing board data when joining room
       if (whiteboardRef.current?.loadBoardData) {
         whiteboardRef.current.loadBoardData(data._children);
