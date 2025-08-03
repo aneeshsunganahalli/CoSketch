@@ -167,7 +167,7 @@ export const useWhiteboardSocket = (socketService?: any, fabricRef?: any, isUpda
     const y = e.clientY - rect.top;
     
     const now = Date.now();
-    const CURSOR_UPDATE_THROTTLE = 50;
+    const CURSOR_UPDATE_THROTTLE = 32; // ~30fps for smoother cursor movement
     
     if (now - lastCursorUpdate.current > CURSOR_UPDATE_THROTTLE) {
       socketService.emitCursorMove(x, y, state.brushColor, state.brushSize, state.selectedTool);
