@@ -32,8 +32,6 @@ const MiroWhiteboard = forwardRef<any, WhiteboardProps>(({ className = '', roomI
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fabricRef = useRef<Canvas | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const historyRef = useRef<string[]>([]);
-  const historyIndexRef = useRef(-1);
   const lastCursorUpdate = useRef<number>(0);
   const remoteCursors = useRef<Map<string, RemoteCursor>>(new Map());
   const [, setRemoteCursorsUpdate] = useState(0); // Force re-render for cursor updates
@@ -283,7 +281,6 @@ const MiroWhiteboard = forwardRef<any, WhiteboardProps>(({ className = '', roomI
 
     setupCanvasEvents();
     updateToolSettings();
-    saveHistory();
 
     // Handle window resize
     const handleResize = () => {
@@ -339,47 +336,6 @@ const MiroWhiteboard = forwardRef<any, WhiteboardProps>(({ className = '', roomI
       canvas.renderAll();
     }
   };
-
-  // Updated history management with better state handling
-  const saveHistory = useCallback(() => {
-    if (!fabricRef.current || isUpdatingFromHistory) return;
-
-    try {
-      const canvas = fabricRef.current;
-
-      // Ensure canvas has white background before saving
-      canvas.backgroundColor = '#ffffff';
-
-      // Get canvas state with all objects
-      const canvasState = canvas.toJSON();
-      canvasState.backgroundColor = '#ffffff';
-
-      const stateString = JSON.stringify(canvasState);
-
-      // Don't save duplicate states
-      if (historyRef.current.length > 0 &&
-        historyRef.current[historyIndexRef.current] === stateString) {
-        return;
-      }
-
-      // Remove future history if we're not at the end
-      if (historyIndexRef.current < historyRef.current.length - 1) {
-        historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
-      }
-
-      // Add new state
-      historyRef.current.push(stateString);
-      historyIndexRef.current = historyRef.current.length - 1;
-
-      // Keep only last 30 states to prevent memory issues
-      if (historyRef.current.length > 30) {
-        historyRef.current = historyRef.current.slice(-30);
-        historyIndexRef.current = historyRef.current.length - 1;
-      }
-    } catch (error) {
-      console.error('Error saving history:', error);
-    }
-  }, [isUpdatingFromHistory]);
 
   const setupCanvasEvents = useCallback(() => {
     if (!fabricRef.current) return;
@@ -471,16 +427,10 @@ const MiroWhiteboard = forwardRef<any, WhiteboardProps>(({ className = '', roomI
       opt.e.stopPropagation();
     });
 
-    // Updated history saving with debounce and socket broadcasting
-    let saveTimeout: NodeJS.Timeout;
-
+    // Canvas event broadcasting
     const debouncedSaveHistory = () => {
       if (isUpdatingFromHistory) return;
-
-      clearTimeout(saveTimeout);
-      saveTimeout = setTimeout(() => {
-        saveHistory();
-      }, 300); // Longer debounce to prevent excessive saves
+      // History functionality removed - no longer saving state
     };
 
     const broadcastCanvasEvent = (eventType: string, data?: any) => {
@@ -543,9 +493,9 @@ const MiroWhiteboard = forwardRef<any, WhiteboardProps>(({ className = '', roomI
     });
 
     return () => {
-      clearTimeout(saveTimeout);
+      // Cleanup if needed
     };
-  }, [state.selectedTool, state.isPanning, isDragging, isUpdatingFromHistory, saveHistory]);
+  }, [state.selectedTool, state.isPanning, isDragging, isUpdatingFromHistory]);
 
   const addShapeAtPoint = (pointer: Point) => {
     switch (state.selectedTool) {
@@ -612,80 +562,6 @@ const MiroWhiteboard = forwardRef<any, WhiteboardProps>(({ className = '', roomI
     // saveHistory will be called by the event listener
   };
 
-  const undo = useCallback(() => {
-    if (!fabricRef.current || historyIndexRef.current <= 0) return;
-
-    const canvas = fabricRef.current;
-    setIsUpdatingFromHistory(true);
-
-    try {
-      historyIndexRef.current--;
-      const previousState = historyRef.current[historyIndexRef.current];
-      const stateObj = JSON.parse(previousState);
-
-      // Clear canvas first
-      canvas.clear();
-
-      // Set background
-      canvas.backgroundColor = '#ffffff';
-
-      // Load the state synchronously if possible
-      canvas.loadFromJSON(stateObj, () => {
-        // Force immediate render
-        canvas.renderAll();
-
-        // Small delay to ensure everything is rendered
-        requestAnimationFrame(() => {
-          if (fabricRef.current) {
-            fabricRef.current.renderAll();
-            setIsUpdatingFromHistory(false);
-          }
-        });
-      });
-
-    } catch (error) {
-      console.error('Error during undo:', error);
-      setIsUpdatingFromHistory(false);
-    }
-  }, []);
-
-  const redo = useCallback(() => {
-    if (!fabricRef.current || historyIndexRef.current >= historyRef.current.length - 1) return;
-
-    const canvas = fabricRef.current;
-    setIsUpdatingFromHistory(true);
-
-    try {
-      historyIndexRef.current++;
-      const nextState = historyRef.current[historyIndexRef.current];
-      const stateObj = JSON.parse(nextState);
-
-      // Clear canvas first
-      canvas.clear();
-
-      // Set background
-      canvas.backgroundColor = '#ffffff';
-
-      // Load the state
-      canvas.loadFromJSON(stateObj, () => {
-        // Force immediate render
-        canvas.renderAll();
-
-        // Small delay to ensure everything is rendered
-        requestAnimationFrame(() => {
-          if (fabricRef.current) {
-            fabricRef.current.renderAll();
-            setIsUpdatingFromHistory(false);
-          }
-        });
-      });
-
-    } catch (error) {
-      console.error('Error during redo:', error);
-      setIsUpdatingFromHistory(false);
-    }
-  }, []);
-
   const clearCanvas = useCallback(() => {
     if (!fabricRef.current) return;
     fabricRef.current.clear();
@@ -695,9 +571,7 @@ const MiroWhiteboard = forwardRef<any, WhiteboardProps>(({ className = '', roomI
     if (socketService) {
       socketService.emitClearCanvas();
     }
-    
-    saveHistory();
-  }, [saveHistory, socketService]);
+  }, [socketService]);
 
   const exportCanvas = () => {
     if (!fabricRef.current) return;
@@ -785,8 +659,6 @@ const MiroWhiteboard = forwardRef<any, WhiteboardProps>(({ className = '', roomI
       <Toolbar
         state={state}
         onStateChange={handleStateChange}
-        onUndo={undo}
-        onRedo={redo}
         onClear={clearCanvas}
         onExport={exportCanvas}
         onResetView={fitToScreen}

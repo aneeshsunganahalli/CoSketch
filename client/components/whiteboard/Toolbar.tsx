@@ -7,8 +7,6 @@ import {
   Highlighter, 
   Eraser, 
   Type, 
-  Undo2,
-  Redo2,
   Trash2,
   Download,
   ChevronDown,
@@ -29,8 +27,6 @@ const iconMap = {
 interface ToolbarProps {
   state: WhiteboardState;
   onStateChange: (updates: Partial<WhiteboardState>) => void;
-  onUndo: () => void;
-  onRedo: () => void;
   onClear: () => void;
   onExport: () => void;
   onResetView: () => void;
@@ -39,8 +35,6 @@ interface ToolbarProps {
 export const Toolbar: React.FC<ToolbarProps> = ({
   state,
   onStateChange,
-  onUndo,
-  onRedo,
   onClear,
   onExport,
   onResetView,
@@ -184,20 +178,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
           {/* Actions */}
           <div className="flex items-center space-x-1">
-            <button
-              onClick={onUndo}
-              className="w-10 h-10 rounded-lg hover:bg-gray-100 text-gray-700 transition-all flex items-center justify-center"
-              title="Undo (Ctrl+Z)"
-            >
-              <Undo2 size={18} />
-            </button>
-            <button
-              onClick={onRedo}
-              className="w-10 h-10 rounded-lg hover:bg-gray-100 text-gray-700 transition-all flex items-center justify-center"
-              title="Redo (Ctrl+Y)"
-            >
-              <Redo2 size={18} />
-            </button>
             <button
               onClick={onClear}
               className="w-10 h-10 rounded-lg hover:bg-red-50 text-red-600 transition-all flex items-center justify-center"
