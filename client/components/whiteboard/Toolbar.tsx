@@ -45,11 +45,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const popularColors = COLORS.slice(0, 8);
   
   return (
-    <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50">
+    <div className="absolute top-55 left-4 z-50">
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-2">
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-col items-center space-y-2">
           {/* Tool Selection */}
-          <div className="flex items-center bg-gray-50 rounded-xl p-1">
+          <div className="flex flex-col items-center bg-gray-50 rounded-xl p-1 space-y-1">
             {TOOLS.map((tool) => {
               const IconComponent = iconMap[tool.icon as keyof typeof iconMap];
               return (
@@ -70,7 +70,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                   ) : (
                     <span className="text-base">{tool.icon}</span>
                   )}
-                  <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                  <div className="absolute -right-12 top-1/2 transform -translate-y-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
                     {tool.name}
                   </div>
                 </button>
@@ -79,47 +79,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           </div>
 
           {/* Divider */}
-          <div className="w-px h-8 bg-gray-200" />
-
-          {/* Brush Size */}
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-black font-medium">Size</span>
-            <div className="flex items-center bg-gray-50 rounded-xl px-2 py-1">
-              {BRUSH_SIZES.slice(0, 4).map((size) => (
-                <button
-                  key={size}
-                  onClick={() => onStateChange({ brushSize: size })}
-                  className={`w-8 h-8 rounded-lg transition-all flex items-center justify-center ${
-                    state.brushSize === size
-                      ? 'bg-blue-500'
-                      : 'hover:bg-gray-200'
-                  }`}
-                  title={`${size}px`}
-                >
-                  <div
-                    className={`rounded-full ${
-                      state.brushSize === size ? 'bg-white' : 'bg-gray-600'
-                    }`}
-                    style={{
-                      width: Math.max(3, Math.min(size / 2, 10)),
-                      height: Math.max(3, Math.min(size / 2, 10)),
-                    }}
-                  />
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div className="w-px h-8 bg-gray-200" />
+          <div className="h-px w-8 bg-gray-200" />
 
           {/* Color Palette */}
-          <div className="flex items-center space-x-2 relative">
-            <span className="text-sm text-black font-medium">Color</span>
-            <div className="flex items-center bg-gray-50 rounded-xl px-2 py-1">
+          <div className="flex flex-col items-center space-y-2 relative">
+            <div className="flex flex-col items-center bg-gray-50 rounded-xl px-2 py-2">
               {/* Compact Color View */}
-              <div className="flex items-center space-x-1">
-                {popularColors.map((color) => (
+              <div className="flex flex-col items-center space-y-1">
+                {popularColors.slice(0, 4).map((color) => (
                   <button
                     key={color}
                     onClick={() => onStateChange({ brushColor: color })}
@@ -150,8 +117,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
             {/* Expanded Color Palette */}
             {isColorExpanded && (
-              <div className="absolute top-12 left-0 bg-white rounded-xl shadow-xl border border-gray-100 p-3 z-50 min-w-80">
-                <div className="grid grid-cols-8 gap-2">
+              <div className="absolute top-0 left-16 bg-white rounded-xl shadow-xl border border-gray-100 p-3 z-50 min-w-64">
+                <div className="grid grid-cols-6 gap-2">
                   {COLORS.map((color) => (
                     <button
                       key={color}
@@ -174,10 +141,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           </div>
 
           {/* Divider */}
-          <div className="w-px h-8 bg-gray-200" />
+          <div className="h-px w-8 bg-gray-200" />
 
           {/* Actions */}
-          <div className="flex items-center space-x-1">
+          <div className="flex flex-col items-center space-y-1">
             <button
               onClick={onClear}
               className="w-10 h-10 rounded-lg hover:bg-red-50 text-red-600 transition-all flex items-center justify-center"
@@ -188,24 +155,16 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           </div>
 
           {/* Divider */}
-          <div className="w-px h-8 bg-gray-200" />
+          <div className="h-px w-8 bg-gray-200" />
 
           {/* View Controls */}
-          <div className="flex items-center space-x-1">
-            <button
-              onClick={onResetView}
-              className="px-3 py-2 text-sm text-black hover:bg-gray-100 rounded-lg transition-all font-medium"
-              title="Reset View"
-            >
-              {Math.round(state.zoom * 100)}%
-            </button>
+          <div className="flex flex-col items-center space-y-1">
             <button
               onClick={onExport}
-              className="px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-all shadow-md flex items-center space-x-2"
+              className="px-3 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-all shadow-md flex items-center justify-center"
               title="Export"
             >
               <Download size={16} />
-              <span>Export</span>
             </button>
           </div>
         </div>
