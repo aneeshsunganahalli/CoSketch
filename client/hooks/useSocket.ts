@@ -14,6 +14,7 @@ interface UseSocketProps {
   roomId: string;
   userName?: string;
   isAuthenticated?: boolean;
+  authLoading?: boolean;
   onDraw?: (data: DrawData) => void;
   onBroadcast?: (data: BroadcastMessage) => void;
   onBoardData?: (data: { _children: any[] }) => void;
@@ -29,6 +30,7 @@ export const useSocket = ({
   roomId,
   userName,
   isAuthenticated = false,
+  authLoading = false,
   onDraw,
   onBroadcast,
   onBoardData,
@@ -145,7 +147,7 @@ export const useSocket = ({
 
   // Handle room changes separately
   useEffect(() => {
-    if (!isInitialized.current || !roomId) return;
+    if (!isInitialized.current || !roomId || authLoading) return;
 
     // Only join if room changed
     if (currentRoomId.current !== roomId) {
@@ -153,7 +155,7 @@ export const useSocket = ({
       socketService.joinRoom(roomId, userName, isAuthenticated);
       currentRoomId.current = roomId;
     }
-  }, [roomId, userName, isAuthenticated]); // Add userName and isAuthenticated to dependencies
+  }, [roomId, userName, isAuthenticated, authLoading]); // Add authLoading to dependencies
 
   return {
     socket: socketService,

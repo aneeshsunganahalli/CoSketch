@@ -2,7 +2,7 @@
 
 import Whiteboard from "@/components/WhiteBoard";
 import RoomLink from "@/components/room/RoomLink";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useSocket } from "@/hooks/useSocket";
 import { useAuth } from "@/contexts/AuthContext";
 import React, { useState, useEffect, useRef } from "react";
@@ -10,8 +10,9 @@ import { DrawData, BroadcastMessage, UserJoinedEvent, UserLeftEvent, RoomUsersEv
 
 const Room = () => {
   const { id } = useParams();
+  const router = useRouter();
   const roomId = id as string;
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   
   const [userCount, setUserCount] = useState(1);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
@@ -29,6 +30,7 @@ const Room = () => {
     roomId,
     userName: user?.name,
     isAuthenticated: !!user,
+    authLoading: loading,
     onUserJoined: (data: UserJoinedEvent) => {
       console.log('User joined:', data);
       setUserCount(data.userCount);
@@ -102,146 +104,199 @@ const Room = () => {
     }
   }, [isConnected]);
 
-  const getConnectionColor = () => {
+  const getConnectionStatus = () => {
     switch (connectionStatus) {
-      case 'connected': return 'bg-emerald-500 shadow-emerald-500/25 shadow-lg';
-      case 'connecting': return 'bg-amber-500 shadow-amber-500/25 shadow-lg';
-      case 'disconnected': return 'bg-red-500 shadow-red-500/25 shadow-lg';
-      default: return 'bg-gray-400 shadow-gray-400/25 shadow-lg';
+      case 'connecting':
+        return (
+          <div className="flex items-center text-yellow-600">
+            <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2 animate-pulse"></div>
+            Connecting...
+          </div>
+        );
+      case 'connected':
+        return (
+          <div className="flex items-center text-green-600">
+            <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+            Connected
+          </div>
+        );
+      case 'disconnected':
+        return (
+          <div className="flex items-center text-red-600">
+            <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
+            Disconnected
+          </div>
+        );
+      default:
+        return null;
     }
   };
 
+  // Show loading state while auth is being checked
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
+
   return (
-    <main className="h-screen w-screen overflow-hidden relative bg-white">
-      {/* Enhanced Room header */}
-      <div className="absolute top-4 left-4 z-40">
-        <div className="bg-white/95 backdrop-blur-md rounded-xl px-4 py-3 shadow-lg border border-gray-200/50 transition-all duration-300 hover:shadow-xl hover:bg-white">
+    <div className="h-screen flex flex-col">
+      {/* Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between px-4 lg:px-6 py-3 bg-white border-b border-gray-200 shadow-sm space-y-3 lg:space-y-0">
+        {/* Top row on mobile, left section on desktop */}
+        <div className="flex items-center justify-between lg:justify-start lg:space-x-6">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            <button
+              onClick={() => router.push('/')}
+              className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 transition-colors"
+              title="Go to Home"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Room</span>
-              <span className="text-sm font-semibold text-gray-800 font-mono">{roomId}</span>
+              <span className="font-semibold text-lg">CoSketch</span>
+            </button>
+          </div>
+          
+          {/* Room info and status - moved to left side */}
+          <div className="hidden lg:flex items-center space-x-6">
+            <div className="h-6 w-px bg-gray-300"></div>
+            
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-medium text-gray-900">Room:</span>
+                <span className="text-sm text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded border">
+                  {roomId}
+                </span>
+              </div>
+              
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-1">
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  <span className="text-sm text-gray-600">
+                    {userCount} {userCount === 1 ? 'user' : 'users'}
+                  </span>
+                </div>
+                {getConnectionStatus()}
+              </div>
             </div>
           </div>
+          
+          {/* Mobile leave button */}
+          <button
+            onClick={() => {
+              if (window.confirm('Are you sure you want to leave this room?')) {
+                router.push('/');
+              }
+            }}
+            className="lg:hidden flex items-center space-x-1 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200"
+            title="Leave Room"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span className="hidden sm:inline">Leave</span>
+          </button>
         </div>
-      </div>
 
-      {/* Enhanced Connection status and user count */}
-      <div className="absolute top-4 right-4 z-40">
-        <div className="bg-white/95 backdrop-blur-md rounded-xl px-4 py-3 shadow-lg border border-gray-200/50 transition-all duration-300 hover:shadow-xl hover:bg-white">
-          <div className="flex items-center space-x-4">
-            {/* Connection Status */}
-            <div className="flex items-center space-x-2.5">
-              <div className="relative">
-                <div className={`w-3 h-3 rounded-full ${getConnectionColor()} transition-colors duration-300`}></div>
-                {connectionStatus === 'connected' && (
-                  <div className={`absolute inset-0 w-3 h-3 rounded-full ${getConnectionColor()} animate-ping opacity-30`}></div>
-                )}
-              </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-medium text-gray-800 capitalize leading-tight">
-                  {connectionStatus}
-                </span>
-                {connectionStatus === 'connecting' && (
-                  <span className="text-xs text-gray-500">Joining room...</span>
-                )}
-              </div>
-            </div>
-
-            {/* Separator */}
-            <div className="h-8 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent"></div>
-
-            {/* User Count with Icon */}
+        {/* Bottom row on mobile, right section on desktop */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between lg:justify-end space-y-3 sm:space-y-0 sm:space-x-4">
+          {/* Room info for mobile only */}
+          <div className="lg:hidden flex flex-wrap items-center gap-x-4 gap-y-2">
             <div className="flex items-center space-x-2">
-              <div className="flex items-center justify-center w-6 h-6 bg-blue-100 rounded-full">
-                <svg className="w-3.5 h-3.5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
+              <span className="text-sm font-medium text-gray-900">Room:</span>
+              <span className="text-sm text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded border">
+                {roomId}
+              </span>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-1">
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold text-gray-800 leading-tight">
-                  {userCount}
-                </span>
-                <span className="text-xs text-gray-500 leading-tight">
-                  {userCount === 1 ? 'user' : 'users'} online
+                <span className="text-sm text-gray-600">
+                  {userCount} {userCount === 1 ? 'user' : 'users'}
                 </span>
               </div>
+              {getConnectionStatus()}
             </div>
+          </div>
 
-            {/* Separator */}
-            <div className="h-8 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent"></div>
-
-            {/* Room Share Button */}
-            <div className="flex items-center">
-              <RoomLink 
-                roomId={roomId} 
-                variant="secondary" 
-                size="sm"
-                className="text-xs"
-              />
-            </div>
-
-            {/* Socket ID - More subtle and collapsible */}
-            {socketId && (
-              <>
-                <div className="h-8 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent"></div>
-                <div className="group relative">
-                  <div className="flex items-center space-x-1 cursor-help">
-                    <div className="w-5 h-5 bg-gray-100 rounded-full flex items-center justify-center">
-                      <span className="text-xs font-mono text-gray-600">ID</span>
-                    </div>
+          {/* User actions section */}
+          <div className="flex items-center justify-between sm:justify-end space-x-3">
+            <RoomLink roomId={roomId} />
+            
+            <div className="hidden lg:block h-6 w-px bg-gray-300"></div>
+            
+            {/* User info */}
+            <div className="flex items-center space-x-3">
+              {user ? (
+                <div className="flex items-center space-x-3">
+                  <div className="w-9 h-9 bg-black rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+                    <span className="text-white text-sm font-semibold select-none">
+                      {user.name.charAt(0).toUpperCase()}
+                    </span>
                   </div>
-                  {/* Tooltip */}
-                  <div className="absolute right-0 top-full mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
-                    Socket ID: {socketId}
-                    <div className="absolute bottom-full right-2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-sm font-medium text-gray-900 truncate max-w-32">
+                      {user.name}
+                    </span>
+                    <span className="text-xs text-green-600 font-medium">Authenticated</span>
                   </div>
                 </div>
-              </>
-            )}
-          </div>
-
-          {/* Status message bar */}
-          {connectionStatus !== 'connected' && (
-            <div className="mt-2 pt-2 border-t border-gray-100">
-              <div className="flex items-center space-x-2">
-                {connectionStatus === 'connecting' && (
-                  <>
-                    <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                    <span className="text-xs text-gray-600">Establishing connection...</span>
-                  </>
-                )}
-                {connectionStatus === 'disconnected' && (
-                  <>
-                    <svg className="w-3 h-3 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
+              ) : (
+                <div className="flex items-center space-x-3">
+                  <div className="w-9 h-9 bg-gray-400 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
-                    <span className="text-xs text-red-600">Connection lost. Attempting to reconnect...</span>
-                  </>
-                )}
-              </div>
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-sm font-medium text-gray-700">Guest User</span>
+                    <span className="text-xs text-gray-500 font-medium">Not signed in</span>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+            
+            {/* Desktop leave room button */}
+            <button
+              onClick={() => {
+                if (window.confirm('Are you sure you want to leave this room?')) {
+                  router.push('/');
+                }
+              }}
+              className="hidden lg:flex items-center space-x-1 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200"
+              title="Leave Room"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013 3h4a3 3 0 013 3v1" />
+              </svg>
+              <span>Leave</span>
+            </button>
+          </div>
         </div>
       </div>
-      
-      {/* Full-screen whiteboard */}
-      <Whiteboard 
-        ref={whiteboardRef}
-        className="w-full h-full"
-        roomId={roomId}
-        socketService={{
-          emitBroadcast,
-          emitCursorMove,
-          emitClearCanvas
-        }}
-      />
-    </main>
-  )
-}
 
-export default Room
+      {/* Whiteboard */}
+      <div className="flex-1">
+        <Whiteboard 
+          ref={whiteboardRef}
+          roomId={roomId}
+          socketService={{
+            emitBroadcast,
+            emitCursorMove,
+            emitClearCanvas
+          }}
+        />
+      </div>
+    </div>
+  );
+};
+
+export default Room;

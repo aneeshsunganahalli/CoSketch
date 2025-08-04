@@ -59,6 +59,7 @@ const MiroWhiteboard = forwardRef<any, WhiteboardProps>(({ className = '', roomI
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
     handleRemoteMessage: socket.handleRemoteMessage,
+    handleRemoteCursor: socket.handleRemoteCursor,
     loadBoardData: socket.loadExistingBoardData,
     handleRemoteClear: socket.handleRemoteClear,
     syncCanvas: socket.syncCanvasState
