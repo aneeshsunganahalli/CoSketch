@@ -4,6 +4,15 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import UserModel, { IUser } from '../models/user.model';
 
+// Cookie configuration
+const COOKIE_OPTIONS = {
+  httpOnly: true, // Prevents XSS attacks
+  secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+  sameSite: 'strict' as const, // CSRF protection
+  maxAge: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
+  path: '/', // Available on all paths
+};
+
 const registerUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, email, password } = req.body;
@@ -94,6 +103,9 @@ const registerUser = async (req: Request, res: Response): Promise<void> => {
       }
     );
 
+    // Set JWT as HTTP-only cookie
+    res.cookie('auth_token', token, COOKIE_OPTIONS);
+
     res.status(201).json({ 
       success: true, 
       token,
@@ -182,6 +194,8 @@ const loginUser = async (req: Request, res: Response): Promise<void> => {
       }
     );
 
+     res.cookie('auth_token', token, COOKIE_OPTIONS);
+
     // Update last login time (you might want to add this field to your user model)
     // await UserModel.findByIdAndUpdate(user._id, { lastLogin: new Date() });
 
@@ -201,5 +215,25 @@ const loginUser = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+const logoutUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Clear the authentication cookie
+    res.clearCookie('auth_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+    });
 
-export { registerUser, loginUser };
+    res.status(200).json({ 
+      success: true, 
+      message: "Logged out successfully" 
+    });
+  } catch (error: any) {
+    console.error('Logout error:', error);
+    res.status(500).json({ success: false, message: "An error occurred during logout" });
+  }
+};
+
+
+export { registerUser, loginUser, logoutUser };
