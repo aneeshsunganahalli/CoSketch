@@ -1,14 +1,9 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import UserModel from '../models/user.model';
+import { AuthenticatedRequest } from '../types/room.types';
 
-interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    email: string;
-  };
-}
-
-export const authenticateToken = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+export const authenticateToken = async (req: AuthenticatedRequest, res: any, next: NextFunction): Promise<void> => {
   try {
     // Get token from cookie instead of Authorization header
     const token = req.cookies?.auth_token;
@@ -30,10 +25,19 @@ export const authenticateToken = (req: AuthenticatedRequest, res: Response, next
       audience: 'cosketch-users'
     }) as { id: string; email: string };
 
+    // Fetch user details from database to get the name
+    const user = await UserModel.findById(decoded.id).select('_id name email');
+    
+    if (!user) {
+      res.status(401).json({ success: false, message: 'User not found' });
+      return;
+    }
+
     // Add user info to request object
     req.user = {
-      id: decoded.id,
-      email: decoded.email
+      id: user.id,
+      name: user.name,
+      email: user.email
     };
 
     next();

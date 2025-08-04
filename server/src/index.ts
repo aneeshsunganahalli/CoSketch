@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRouter from "./routes/auth.route";
+import roomRouter from "./routes/room.route";
 
 dotenv.config();
 
@@ -39,6 +40,7 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 app.use('/auth', authRouter);
+app.use('/api/rooms', roomRouter);
 
 // Initialize database connection
 connectDB();
