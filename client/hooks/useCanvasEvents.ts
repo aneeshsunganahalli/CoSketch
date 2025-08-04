@@ -15,7 +15,7 @@ export const useCanvasEvents = (
   socketService: any,
   addText: any
 ) => {
-  const eraseAtPoint = useCallback((pointer: Point) => {
+  const eraseAtPoint = useCallback((pointer: Point, shouldBroadcast: boolean = true) => {
     if (!fabricRef?.current) return;
 
     const canvas = fabricRef.current;
@@ -37,11 +37,26 @@ export const useCanvasEvents = (
       }
     });
 
-    objectsToRemove.forEach(obj => canvas.remove(obj));
     if (objectsToRemove.length > 0) {
+      // Broadcast erase action if requested and not updating from history
+      if (shouldBroadcast && socketService && !isUpdatingFromHistory) {
+        objectsToRemove.forEach(obj => {
+          const objectData = obj.toObject(['customId']);
+          socketService.emitBroadcast({
+            tool: 'eraser',
+            type: 'erase',
+            data: objectData,
+            x: pointer.x,
+            y: pointer.y,
+            size: state.brushSize
+          });
+        });
+      }
+
+      objectsToRemove.forEach(obj => canvas.remove(obj));
       canvas.renderAll();
     }
-  }, [fabricRef, state.brushSize]);
+  }, [fabricRef, state.brushSize, socketService, isUpdatingFromHistory]);
 
   const addShapeAtPoint = useCallback((pointer: Point) => {
     switch (state.selectedTool) {
@@ -143,7 +158,11 @@ export const useCanvasEvents = (
     canvas.on('path:created', (e: any) => {
       if (!isUpdatingFromHistory) {
         if (socketService && e.path) {
-          const pathData = e.path.toObject();
+          // Add a unique identifier to the path for better tracking
+          const uniqueId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          e.path.set('customId', uniqueId);
+          
+          const pathData = e.path.toObject(['customId']);
           console.log('Broadcasting path creation:', pathData);
           socketService.emitBroadcast({
             tool: state.selectedTool === 'marker' ? 'marker' : 'pen',

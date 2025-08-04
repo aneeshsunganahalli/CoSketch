@@ -4,12 +4,14 @@ import Whiteboard from "@/components/WhiteBoard";
 import RoomLink from "@/components/room/RoomLink";
 import { useParams } from "next/navigation";
 import { useSocket } from "@/hooks/useSocket";
+import { useAuth } from "@/contexts/AuthContext";
 import React, { useState, useEffect, useRef } from "react";
-import { DrawData, BroadcastMessage, UserJoinedEvent, UserLeftEvent, RoomUsersEvent } from "@/types/socket.types";
+import { DrawData, BroadcastMessage, UserJoinedEvent, UserLeftEvent, RoomUsersEvent, CursorMoveEvent } from "@/types/socket.types";
 
 const Room = () => {
   const { id } = useParams();
   const roomId = id as string;
+  const { user } = useAuth();
   
   const [userCount, setUserCount] = useState(1);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
@@ -25,6 +27,8 @@ const Room = () => {
     emitCursorMove 
   } = useSocket({
     roomId,
+    userName: user?.name,
+    isAuthenticated: !!user,
     onUserJoined: (data: UserJoinedEvent) => {
       console.log('User joined:', data);
       setUserCount(data.userCount);
@@ -49,6 +53,21 @@ const Room = () => {
       // Forward broadcast events to whiteboard
       if (whiteboardRef.current?.handleRemoteMessage) {
         whiteboardRef.current.handleRemoteMessage(data);
+      }
+    },
+    onCursorMove: (data: CursorMoveEvent) => {
+      console.log('Room received cursor move:', data);
+      // Forward cursor move events to whiteboard socket handler
+      if (whiteboardRef.current?.handleRemoteCursor) {
+        whiteboardRef.current.handleRemoteCursor({
+          socket: data.userId,
+          userName: data.userName,
+          x: data.x,
+          y: data.y,
+          color: data.color,
+          size: data.size,
+          tool: data.tool
+        });
       }
     },
     onBoardData: (data: { _children: any[] }) => {

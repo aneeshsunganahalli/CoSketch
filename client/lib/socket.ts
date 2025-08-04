@@ -99,7 +99,7 @@ class SocketService {
   }
 
   // Room methods
-  joinRoom(roomId: string) {
+  joinRoom(roomId: string, userName?: string, isAuthenticated: boolean = false) {
     if (!this.socket) {
       console.warn('⚠️ Cannot join room: No socket connection');
       return;
@@ -117,9 +117,13 @@ class SocketService {
       this.socket.emit('leave-room', this.roomId);
     }
 
-    console.log('🏠 Joining room:', roomId);
+    console.log('🏠 Joining room:', roomId, 'as', userName || 'Guest');
     this.roomId = roomId;
-    this.socket.emit('join-room', roomId);
+    this.socket.emit('join-room', { 
+      roomId, 
+      userName, 
+      isAuthenticated 
+    });
   }
 
   leaveRoom() {

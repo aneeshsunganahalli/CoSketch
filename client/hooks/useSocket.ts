@@ -12,6 +12,8 @@ import {
 
 interface UseSocketProps {
   roomId: string;
+  userName?: string;
+  isAuthenticated?: boolean;
   onDraw?: (data: DrawData) => void;
   onBroadcast?: (data: BroadcastMessage) => void;
   onBoardData?: (data: { _children: any[] }) => void;
@@ -25,6 +27,8 @@ interface UseSocketProps {
 
 export const useSocket = ({
   roomId,
+  userName,
+  isAuthenticated = false,
   onDraw,
   onBroadcast,
   onBoardData,
@@ -146,10 +150,10 @@ export const useSocket = ({
     // Only join if room changed
     if (currentRoomId.current !== roomId) {
       console.log('🏠 Room changed from', currentRoomId.current, 'to', roomId);
-      socketService.joinRoom(roomId);
+      socketService.joinRoom(roomId, userName, isAuthenticated);
       currentRoomId.current = roomId;
     }
-  }, [roomId]); // Only depend on roomId
+  }, [roomId, userName, isAuthenticated]); // Add userName and isAuthenticated to dependencies
 
   return {
     socket: socketService,

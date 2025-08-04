@@ -14,6 +14,7 @@ export interface BroadcastMessage {
   color?: string;
   size?: number;
   socket?: string;
+  userName?: string;
   timestamp?: number;
 }
 
@@ -61,6 +62,7 @@ export interface ClearCanvasEvent {
 
 export interface CursorMoveEvent {
   userId: string;
+  userName?: string;
   x: number;
   y: number;
   color?: string;

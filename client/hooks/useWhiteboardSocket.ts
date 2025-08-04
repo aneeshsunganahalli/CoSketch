@@ -6,6 +6,7 @@ import { BroadcastMessage } from '@/types/socket.types';
 
 interface RemoteCursor {
   userId: string;
+  userName?: string;
   x: number;
   y: number;
   color?: string;
@@ -24,6 +25,7 @@ export const useWhiteboardSocket = (socketService?: any, fabricRef?: any, isUpda
     
     const cursor: RemoteCursor = {
       userId: message.socket,
+      userName: message.userName,
       x: message.x,
       y: message.y,
       color: message.color,
@@ -35,6 +37,48 @@ export const useWhiteboardSocket = (socketService?: any, fabricRef?: any, isUpda
     remoteCursors.current.set(message.socket, cursor);
     setRemoteCursorsUpdate(prev => prev + 1);
   }, []);
+
+  const handleRemoteErase = useCallback((message: BroadcastMessage) => {
+    if (!fabricRef?.current || !message.data) return;
+    
+    console.log('Handling remote erase:', message);
+    
+    const canvas = fabricRef.current;
+    const targetObjectData = message.data;
+    
+    // Find objects that match the erased object data
+    const objects = canvas.getObjects();
+    let objectsToRemove: any[] = [];
+    
+    // Try to find by custom ID first (more reliable)
+    if (targetObjectData.customId) {
+      objectsToRemove = objects.filter((obj: any) => {
+        return obj.customId === targetObjectData.customId;
+      });
+    }
+    
+    // Fallback to property-based matching if no customId match found
+    if (objectsToRemove.length === 0) {
+      objectsToRemove = objects.filter((obj: any) => {
+        const objData = obj.toObject();
+        
+        // Compare key properties to identify the same object
+        return (
+          objData.type === targetObjectData.type &&
+          Math.abs(objData.left - targetObjectData.left) < 1 &&
+          Math.abs(objData.top - targetObjectData.top) < 1 &&
+          objData.width === targetObjectData.width &&
+          objData.height === targetObjectData.height
+        );
+      });
+    }
+    
+    if (objectsToRemove.length > 0) {
+      objectsToRemove.forEach((obj: any) => canvas.remove(obj));
+      canvas.renderAll();
+      console.log(`Removed ${objectsToRemove.length} objects via remote erase`);
+    }
+  }, [fabricRef]);
 
   const handleRemoteDrawing = useCallback((message: BroadcastMessage) => {
     if (!fabricRef?.current || isUpdatingFromHistory) return;
@@ -57,6 +101,9 @@ export const useWhiteboardSocket = (socketService?: any, fabricRef?: any, isUpda
         }).catch((error) => {
           console.error('Error creating path from remote data:', error);
         });
+      } else if (message.tool === 'eraser' && message.type === 'erase') {
+        console.log('Processing remote erase action:', message);
+        handleRemoteErase(message);
       }
     } catch (error) {
       console.error('Error handling remote drawing:', error);
@@ -65,7 +112,7 @@ export const useWhiteboardSocket = (socketService?: any, fabricRef?: any, isUpda
         setIsUpdatingFromHistory?.(false);
       }, 100);
     }
-  }, [fabricRef, isUpdatingFromHistory, setIsUpdatingFromHistory]);
+  }, [fabricRef, isUpdatingFromHistory, setIsUpdatingFromHistory, handleRemoteErase]);
 
   const syncCanvasState = useCallback(() => {
     if (!fabricRef?.current || !socketService || isUpdatingFromHistory) return;
@@ -135,6 +182,9 @@ export const useWhiteboardSocket = (socketService?: any, fabricRef?: any, isUpda
                 console.error('Error loading path:', error);
               });
             }
+          } else if (message.tool === 'eraser' && message.type === 'erase') {
+            console.log(`Loading erase action ${index + 1}/${boardData.length}:`, message.data);
+            handleRemoteErase(message);
           }
           
           if (index === boardData.length - 1) {
@@ -148,7 +198,7 @@ export const useWhiteboardSocket = (socketService?: any, fabricRef?: any, isUpda
       console.error('Error loading board data:', error);
       setIsUpdatingFromHistory?.(false);
     }
-  }, [fabricRef, setIsUpdatingFromHistory]);
+  }, [fabricRef, setIsUpdatingFromHistory, handleRemoteErase]);
 
   const handleRemoteClear = useCallback(() => {
     if (fabricRef?.current) {
@@ -198,6 +248,7 @@ export const useWhiteboardSocket = (socketService?: any, fabricRef?: any, isUpda
     remoteCursors, 
     handleRemoteCursor,
     handleRemoteDrawing,
+    handleRemoteErase,
     syncCanvasState,
     handleCanvasStateRestore,
     loadExistingBoardData,

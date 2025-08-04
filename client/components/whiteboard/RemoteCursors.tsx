@@ -5,6 +5,7 @@ import { CursorMoveEvent } from '@/types/socket.types';
 
 interface RemoteCursor {
   userId: string;
+  userName?: string;
   x: number;
   y: number;
   color?: string;
@@ -163,7 +164,7 @@ const RemoteCursors: React.FC<RemoteCursorsProps> = ({ cursors, containerRef }) 
                     {getCursorIcon(cursor.tool)}
                   </div>
                   <span className="text-white/95 font-mono text-xs">
-                    {cursor.userId.slice(0, 4)}
+                    {cursor.userName || `User_${cursor.userId.slice(0, 4)}`}
                   </span>
                 </div>
                 
