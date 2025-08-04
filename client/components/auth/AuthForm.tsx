@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { authApi } from '@/lib/apiService';
-import { LoginData, RegisterData } from '@/types/api.types';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AuthFormProps {
   mode: 'login' | 'register';
@@ -12,6 +11,7 @@ interface AuthFormProps {
 
 export default function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
+  const { login, register } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -38,32 +38,23 @@ export default function AuthForm({ mode }: AuthFormProps) {
     setError('');
 
     try {
-      let result;
+      let success;
       
       if (isLogin) {
-        const loginData: LoginData = {
-          email: formData.email,
-          password: formData.password,
-        };
-        result = await authApi.login(loginData);
+        success = await login(formData.email, formData.password);
       } else {
-        const registerData: RegisterData = {
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-        };
-        result = await authApi.register(registerData);
+        success = await register(formData.name, formData.email, formData.password);
       }
 
-      if (result.success) {
+      if (success) {
         // Redirect to home page or dashboard
         router.push('/');
       } else {
-        setError(result.message || 'Something went wrong');
+        setError('Authentication failed. Please check your credentials and try again.');
       }
     } catch (err: any) {
       console.error('Auth error:', err);
-      setError(err.response?.data?.message || err.message || 'Something went wrong');
+      setError('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }

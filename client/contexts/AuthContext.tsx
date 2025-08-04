@@ -25,11 +25,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAuthStatus = async () => {
     try {
-      // You could add a verify endpoint to check if the cookie is valid
-      // For now, we'll assume the user is not authenticated on page load
-      setLoading(false);
-    } catch (error) {
-      console.error('Auth check failed:', error);
+      const result = await authApi.verify();
+      if (result.success && result.user) {
+        setUser(result.user);
+      }
+    } catch (error: any) {
+      // 401 means user is not authenticated (guest), which is perfectly fine
+      if (error.response?.status === 401) {
+        setUser(null);
+      } else {
+        // Only log actual errors (network issues, server errors, etc.)
+        console.error('Auth check failed:', error);
+        setUser(null);
+      }
+    } finally {
       setLoading(false);
     }
   };

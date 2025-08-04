@@ -26,5 +26,11 @@ export const authApi = {
   logout: async (): Promise<ApiResponse> => {
     const response = await api.post('/auth/logout');
     return response.data;
+  },
+
+  // Verify authentication status
+  verify: async (): Promise<ApiResponse> => {
+    const response = await api.get('/auth/verify');
+    return response.data;
   }
 };

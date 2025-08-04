@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import AuthNav from "@/components/auth/AuthNav";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Home() {
   const [roomId, setRoomId] = useState("");
+  const { user, loading } = useAuth();
 
   const generateRoomId = () => {
     return Math.random().toString(36).substring(2, 15);
@@ -98,7 +100,7 @@ export default function Home() {
               <span className="text-xl font-bold text-gray-900 font-mono">CoSketch</span>
             </div>
             <div className="flex items-center space-x-4">
-              <AuthNav />
+              <AuthNav user={user} />
             </div>
           </div>
         </div>
