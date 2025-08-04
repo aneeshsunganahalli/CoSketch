@@ -34,3 +34,31 @@ export const authApi = {
     return response.data;
   }
 };
+
+export const roomApi = {
+  // Create a new room
+  createRoom: async (guestName?: string): Promise<ApiResponse> => {
+    const body = guestName ? { guestName } : {};
+    const response = await api.post('/api/rooms/create', body);
+    return response.data;
+  },
+
+  // Get room information
+  getRoomInfo: async (roomId: string): Promise<ApiResponse> => {
+    const response = await api.get(`/api/rooms/${roomId}`);
+    return response.data;
+  },
+
+  // Join a room
+  joinRoom: async (roomId: string, guestName?: string): Promise<ApiResponse> => {
+    const body = guestName ? { guestName } : {};
+    const response = await api.post(`/api/rooms/${roomId}/join`, body);
+    return response.data;
+  },
+
+  // Leave a room
+  leaveRoom: async (roomId: string, participantId: string): Promise<ApiResponse> => {
+    const response = await api.post(`/api/rooms/${roomId}/leave`, { participantId });
+    return response.data;
+  }
+};

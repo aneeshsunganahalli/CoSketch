@@ -1,6 +1,7 @@
 'use client'
 
 import Whiteboard from "@/components/WhiteBoard";
+import RoomLink from "@/components/room/RoomLink";
 import { useParams } from "next/navigation";
 import { useSocket } from "@/hooks/useSocket";
 import React, { useState, useEffect, useRef } from "react";
@@ -150,6 +151,19 @@ const Room = () => {
                   {userCount === 1 ? 'user' : 'users'} online
                 </span>
               </div>
+            </div>
+
+            {/* Separator */}
+            <div className="h-8 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent"></div>
+
+            {/* Room Share Button */}
+            <div className="flex items-center">
+              <RoomLink 
+                roomId={roomId} 
+                variant="secondary" 
+                size="sm"
+                className="text-xs"
+              />
             </div>
 
             {/* Socket ID - More subtle and collapsible */}

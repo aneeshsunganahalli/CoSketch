@@ -2,26 +2,11 @@
 
 import { useState } from "react";
 import AuthNav from "@/components/auth/AuthNav";
+import RoomActions from "@/components/room/RoomActions";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Home() {
-  const [roomId, setRoomId] = useState("");
   const { user, loading } = useAuth();
-
-  const generateRoomId = () => {
-    return Math.random().toString(36).substring(2, 15);
-  };
-
-  const createRoom = () => {
-    const newRoomId = generateRoomId();
-    window.location.href = `/room/${newRoomId}`;
-  };
-
-  const joinRoom = () => {
-    if (roomId.trim()) {
-      window.location.href = `/room/${roomId.trim()}`;
-    }
-  };
 
   const features = [
     {
@@ -127,30 +112,8 @@ export default function Home() {
             </p>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
-              <button
-                onClick={createRoom}
-                className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 hover:shadow-lg transition-all duration-200 text-base"
-              >
-                Create Room
-              </button>
-              <div className="flex items-center space-x-3">
-                <input
-                  type="text"
-                  placeholder="Room ID"
-                  value={roomId}
-                  onChange={(e) => setRoomId(e.target.value)}
-                  className="px-4 py-3 text-black border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors text-center font-mono text-sm"
-                  onKeyDown={(e) => e.key === 'Enter' && joinRoom()}
-                />
-                <button
-                  onClick={joinRoom}
-                  disabled={!roomId.trim()}
-                  className="px-6 py-3 bg-gray-800 text-white font-semibold rounded-lg hover:bg-gray-900 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-                >
-                  Join
-                </button>
-              </div>
+            <div className="mb-12">
+              <RoomActions user={user} className="max-w-md mx-auto" />
             </div>
 
             {/* Tech Stack */}
@@ -239,13 +202,10 @@ export default function Home() {
             Join development teams using CoSketch for system design, code reviews, and technical collaboration
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <button
-              onClick={createRoom}
-              className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-all duration-200"
-            >
-              Start Collaborating
-            </button>
-            <div className="text-gray-400 text-sm">
+            <div className="max-w-md mx-auto">
+              <RoomActions user={user} />
+            </div>
+            <div className="text-gray-400 text-sm text-center sm:text-left">
               No installation required • Works in any modern browser
             </div>
           </div>
