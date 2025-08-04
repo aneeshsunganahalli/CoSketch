@@ -235,5 +235,57 @@ const logoutUser = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+const verifyUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const token = req.cookies?.auth_token;
 
-export { registerUser, loginUser, logoutUser };
+    if (!token) {
+      res.status(401).json({ success: false, message: "No authentication token found" });
+      return;
+    }
+
+    // Verify JWT_SECRET exists
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET is not defined in environment variables');
+      res.status(500).json({ success: false, message: "Server configuration error" });
+      return;
+    }
+
+    // Verify the token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET) as { id: string; email: string };
+
+    // Find the user to make sure they still exist
+    const user = await UserModel.findById(decoded.id);
+    if (!user) {
+      res.status(401).json({ success: false, message: "User not found" });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email
+      }
+    });
+
+  } catch (error: any) {
+    console.error('Token verification error:', error);
+    
+    if (error.name === 'JsonWebTokenError') {
+      res.status(401).json({ success: false, message: "Invalid authentication token" });
+      return;
+    }
+    
+    if (error.name === 'TokenExpiredError') {
+      res.status(401).json({ success: false, message: "Authentication token has expired" });
+      return;
+    }
+    
+    res.status(500).json({ success: false, message: "Authentication verification failed" });
+  }
+};
+
+
+export { registerUser, loginUser, logoutUser, verifyUser };
