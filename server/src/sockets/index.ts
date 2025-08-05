@@ -1,4 +1,5 @@
 import { Server, Socket } from "socket.io";
+import { setupYjsHandlers } from "./yjsHandler";
 
 interface DrawData {
   type: 'path' | 'object' | 'clear' | 'undo' | 'redo' | 'cursor' | 'fabric-path' | 'fabric-object';
@@ -43,6 +44,9 @@ interface BoardMessage {
 export default function registerSocketHandlers(io: Server) {
   const rooms: RoomData = {};
   const userRooms = new Map<string, string>(); // Track which room each user is in
+
+  // Setup Yjs handlers for code editor collaboration
+  setupYjsHandlers(io);
 
   io.on("connection", (socket: Socket) => {
     console.log(`✅ Socket connected: ${socket.id}`);
