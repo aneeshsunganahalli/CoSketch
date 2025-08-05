@@ -28,6 +28,7 @@ interface CollaborativeCodeEditorProps {
   roomId: string;
   initialLanguage?: string;
   initialTheme?: 'vs-dark' | 'vs-light' | 'hc-black';
+  socketInstance?: any; // Accept shared socket instance
   onLanguageChange?: (language: string) => void;
   className?: string;
   showToolbar?: boolean;
@@ -41,6 +42,7 @@ export const CollaborativeCodeEditor: React.FC<CollaborativeCodeEditorProps> = (
   roomId,
   initialLanguage = 'javascript',
   initialTheme = 'vs-dark',
+  socketInstance, // Receive shared socket instance
   onLanguageChange,
   className = '',
   showToolbar = true,
@@ -77,6 +79,7 @@ export const CollaborativeCodeEditor: React.FC<CollaborativeCodeEditorProps> = (
   const { isConnected: yjsConnected, isReady } = useYjsMonaco({
     roomId,
     monacoEditor: monacoEditorRef.current,
+    socketInstance, // Pass shared socket instance
     onContentChange: (content: string) => {
       setCode(content);
       // Update stats

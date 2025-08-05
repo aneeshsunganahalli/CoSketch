@@ -149,16 +149,21 @@ export const useSocket = ({
   useEffect(() => {
     if (!isInitialized.current || !roomId || authLoading) return;
 
-    // Only join if room changed
+    // Only join if room changed or first time joining
     if (currentRoomId.current !== roomId) {
       console.log('🏠 Room changed from', currentRoomId.current, 'to', roomId);
       socketService.joinRoom(roomId, userName, isAuthenticated);
       currentRoomId.current = roomId;
+    } else if (currentRoomId.current === roomId && isConnected) {
+      // If already in the room but reconnected, ensure we're still joined
+      console.log('🔄 Ensuring room membership for', roomId);
+      socketService.joinRoom(roomId, userName, isAuthenticated);
     }
-  }, [roomId, userName, isAuthenticated, authLoading]); // Add authLoading to dependencies
+  }, [roomId, userName, isAuthenticated, authLoading, isConnected]); // Add isConnected to dependencies
 
   return {
     socket: socketService,
+    socketInstance: socketService.getSocketInstance(), // Add socket instance
     isConnected,
     socketId,
     emitDraw: (data: DrawData) => socketService.emitDraw(data),

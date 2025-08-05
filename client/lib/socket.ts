@@ -119,11 +119,7 @@ class SocketService {
 
     console.log('🏠 Joining room:', roomId, 'as', userName || 'Guest');
     this.roomId = roomId;
-    this.socket.emit('join-room', { 
-      roomId, 
-      userName, 
-      isAuthenticated 
-    });
+    this.socket.emit('join-room', roomId, userName); // Match server expected format
   }
 
   leaveRoom() {
@@ -278,6 +274,10 @@ class SocketService {
 
   getSocketId(): string | undefined {
     return this.socket?.id;
+  }
+
+  getSocketInstance() {
+    return this.socket;
   }
 
   getCurrentRoomId(): string | null {

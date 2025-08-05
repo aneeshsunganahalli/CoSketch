@@ -7,11 +7,13 @@ import { CollaborativeCodeEditor } from './CollaborativeCodeEditor';
 interface CodeEditorWrapperProps {
   roomId?: string;
   isCollaborative?: boolean;
+  socketInstance?: any; // Accept shared socket instance
 }
 
 export const CodeEditorWrapper: React.FC<CodeEditorWrapperProps> = ({ 
   roomId, 
-  isCollaborative = false 
+  isCollaborative = false,
+  socketInstance // Receive shared socket instance
 }) => {
   const [code, setCode] = useState('');
   const [language, setLanguage] = useState('javascript');
@@ -31,6 +33,7 @@ export const CodeEditorWrapper: React.FC<CodeEditorWrapperProps> = ({
           <CollaborativeCodeEditor
             roomId={roomId}
             initialLanguage={language}
+            socketInstance={socketInstance} // Pass shared socket instance
             onLanguageChange={setLanguage}
             showToolbar={true}
             showStatusBar={true}

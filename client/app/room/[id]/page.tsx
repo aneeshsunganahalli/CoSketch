@@ -23,6 +23,7 @@ const Room = () => {
   const { 
     isConnected, 
     socketId,
+    socketInstance, // Get socket instance
     emitDraw,
     emitBroadcast,
     emitCanvasState,
@@ -323,7 +324,8 @@ const Room = () => {
 
       {/* Content */}
       <div className="flex-1">
-        {activeTab === 'whiteboard' ? (
+        {/* Whiteboard - Always mounted, visibility controlled by CSS */}
+        <div className={activeTab === 'whiteboard' ? 'block' : 'hidden'}>
           <Whiteboard 
             ref={whiteboardRef}
             roomId={roomId}
@@ -333,14 +335,16 @@ const Room = () => {
               emitClearCanvas
             }}
           />
-        ) : (
-          <div className="h-full">
-            <CodeEditorWrapper 
-              roomId={roomId} 
-              isCollaborative={true}
-            />
-          </div>
-        )}
+        </div>
+        
+        {/* Code Editor - Always mounted, visibility controlled by CSS */}
+        <div className={`h-full ${activeTab === 'code' ? 'block' : 'hidden'}`}>
+          <CodeEditorWrapper 
+            roomId={roomId} 
+            isCollaborative={true}
+            socketInstance={socketInstance} // Pass shared socket instance
+          />
+        </div>
       </div>
     </div>
   );

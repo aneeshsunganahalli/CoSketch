@@ -5,13 +5,14 @@ import type { editor } from 'monaco-editor';
 interface UseYjsMonacoProps {
   roomId: string;
   monacoEditor: editor.IStandaloneCodeEditor | null;
+  socketInstance?: any; // Accept shared socket instance
   onContentChange?: (content: string) => void;
 }
 
-export const useYjsMonaco = ({ roomId, monacoEditor, onContentChange }: UseYjsMonacoProps) => {
+export const useYjsMonaco = ({ roomId, monacoEditor, socketInstance, onContentChange }: UseYjsMonacoProps) => {
   const bindingRef = useRef<any | null>(null);
   const awarenessRef = useRef<any | null>(null);
-  const { ydoc, ytext, isConnected } = useYjsProvider({ roomId });
+  const { ydoc, ytext, isConnected } = useYjsProvider({ roomId, socketInstance });
 
   useEffect(() => {
     if (!monacoEditor || !ydoc || !ytext || typeof window === 'undefined') {

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import * as Y from 'yjs';
-import io from 'socket.io-client';
+import { socketService } from '@/lib/socket';
 
 interface UseYjsProviderProps {
   roomId: string;
-  serverUrl?: string;
+  socketInstance?: any; // Accept existing socket instance
 }
 
 interface YjsProvider {
@@ -15,10 +15,9 @@ interface YjsProvider {
 }
 
 export const useYjsProvider = ({ 
-  roomId, 
-  serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000' 
+  roomId,
+  socketInstance // Use shared socket instance
 }: UseYjsProviderProps): YjsProvider => {
-  const socketRef = useRef<ReturnType<typeof io> | null>(null);
   const ydocRef = useRef<Y.Doc | null>(null);
   const ytextRef = useRef<Y.Text | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -33,24 +32,33 @@ export const useYjsProvider = ({
     ydocRef.current = ydoc;
     ytextRef.current = ytext;
 
-    // Initialize socket connection
-    const socket = io(serverUrl, {
-      transports: ['websocket', 'polling']
-    });
-    socketRef.current = socket;
+    // Use the shared socket instance or get from socketService
+    const socket = socketInstance || socketService.connect();
 
-    socket.on('connect', () => {
-      console.log('📝 Connected to Yjs server');
+    // Set connection status based on socket state
+    setIsConnected(socket.connected);
+
+    const handleConnect = () => {
+      console.log('📝 Connected to Yjs server via shared socket');
       setIsConnected(true);
       
-      // Join the Yjs room
+      // Join the Yjs room using shared socket
       socket.emit('yjs-join-room', roomId);
-    });
+    };
 
-    socket.on('disconnect', () => {
+    const handleDisconnect = () => {
       console.log('📝 Disconnected from Yjs server');
       setIsConnected(false);
-    });
+    };
+
+    // Set up event listeners
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+
+    // If already connected, join room immediately
+    if (socket.connected) {
+      handleConnect();
+    }
 
     // Handle initial sync
     socket.on('yjs-sync', ({ roomId: syncRoomId, update }: { roomId: string; update: number[] }) => {
@@ -100,19 +108,19 @@ export const useYjsProvider = ({
       
       // Clean up event listeners
       ydoc.off('update', updateHandler);
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.off('yjs-sync');
+      socket.off('yjs-update');
       
-      // Disconnect socket
-      socket.disconnect();
-      
-      // Destroy Yjs document
+      // Only destroy the document, don't disconnect the shared socket
       ydoc.destroy();
       
       // Reset refs
       ydocRef.current = null;
       ytextRef.current = null;
-      socketRef.current = null;
     };
-  }, [roomId, serverUrl]);
+  }, [roomId, socketInstance]);
 
   return {
     ydoc: ydocRef.current!,
