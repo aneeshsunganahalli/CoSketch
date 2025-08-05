@@ -117,9 +117,9 @@ class SocketService {
       this.socket.emit('leave-room', this.roomId);
     }
 
-    console.log('🏠 Joining room:', roomId, 'as', userName || 'Guest');
+    console.log('🏠 Joining room:', roomId, 'as', userName || 'Guest', isAuthenticated ? '(authenticated)' : '(guest)');
     this.roomId = roomId;
-    this.socket.emit('join-room', roomId, userName); // Match server expected format
+    this.socket.emit('join-room', roomId, userName, isAuthenticated); // Pass isAuthenticated flag
   }
 
   leaveRoom() {

@@ -24,6 +24,7 @@ interface CursorData {
 interface RoomData {
   [roomId: string]: {
     users: Set<string>;
+    userInfo: Map<string, { socketId: string; userName?: string; isAuthenticated?: boolean }>; // Track user details
     canvasState?: string;
     boardData?: any[];
   };
@@ -38,12 +39,14 @@ interface BoardMessage {
   color?: string;
   size?: number;
   userId?: string;
+  userName?: string; // Add userName to board messages
   timestamp?: number;
 }
 
 export default function registerSocketHandlers(io: Server) {
   const rooms: RoomData = {};
   const userRooms = new Map<string, string>(); // Track which room each user is in
+  const userInfo = new Map<string, { userName?: string; isAuthenticated?: boolean }>(); // Track user info globally
 
   // Setup Yjs handlers for code editor collaboration
   setupYjsHandlers(io);
@@ -51,13 +54,16 @@ export default function registerSocketHandlers(io: Server) {
   io.on("connection", (socket: Socket) => {
     console.log(`✅ Socket connected: ${socket.id}`);
 
-    socket.on("join-room", (roomId: string, userId?: string) => {
+    socket.on("join-room", (roomId: string, userName?: string, isAuthenticated: boolean = false) => {
       // Check if user is already in this room
       const currentRoom = userRooms.get(socket.id);
       if (currentRoom === roomId) {
         console.log(`ℹ️ User ${socket.id} already in room ${roomId}`);
         return;
       }
+
+      // Store user info globally
+      userInfo.set(socket.id, { userName, isAuthenticated });
 
       // Leave current room if in a different one
       if (currentRoom && currentRoom !== roomId) {
@@ -70,17 +76,22 @@ export default function registerSocketHandlers(io: Server) {
       if (!rooms[roomId]) {
         rooms[roomId] = { 
           users: new Set(),
+          userInfo: new Map(),
           boardData: []
         };
       }
       
+      // Store user info in room
       rooms[roomId].users.add(socket.id);
+      rooms[roomId].userInfo.set(socket.id, { socketId: socket.id, userName, isAuthenticated });
       userRooms.set(socket.id, roomId);
-      console.log(`🏠 User ${socket.id} joined room ${roomId} (${rooms[roomId].users.size} users)`);
+      
+      const displayName = userName || `Guest_${socket.id.slice(0, 4)}`;
+      console.log(`🏠 User ${displayName} (${socket.id}) joined room ${roomId} (${rooms[roomId].users.size} users)`);
       
       // Send existing board data to new user immediately
       if (rooms[roomId].boardData && rooms[roomId].boardData.length > 0) {
-        console.log(`📋 Sending ${rooms[roomId].boardData.length} existing drawings to new user ${socket.id}`);
+        console.log(`📋 Sending ${rooms[roomId].boardData.length} existing drawings to new user ${displayName}`);
         socket.emit("board-data", { 
           _children: rooms[roomId].boardData,
           roomId: roomId 
@@ -89,7 +100,7 @@ export default function registerSocketHandlers(io: Server) {
       
       // Also send canvas state if available
       if (rooms[roomId].canvasState) {
-        console.log(`🎨 Sending canvas state to new user ${socket.id}`);
+        console.log(`🎨 Sending canvas state to new user ${displayName}`);
         try {
           const canvasData = JSON.parse(rooms[roomId].canvasState);
           socket.emit("broadcast", {
@@ -124,10 +135,14 @@ export default function registerSocketHandlers(io: Server) {
       const roomId = message.data?.board || userRooms.get(socket.id);
       if (!roomId || !socket.rooms.has(roomId)) return;
 
-      // Add socket ID and timestamp to message
+      // Get user info for enriching the message
+      const user = userInfo.get(socket.id);
+
+      // Add socket ID, userName, and timestamp to message
       const enrichedMessage = {
         ...message,
         socket: socket.id,
+        userName: user?.userName, // Add userName to broadcast messages
         timestamp: Date.now()
       };
 
@@ -189,8 +204,13 @@ export default function registerSocketHandlers(io: Server) {
       size?: number;
       tool?: string;
     }) => {
+      // Get user info for this socket
+      const user = userInfo.get(socket.id);
+      const userName = user?.userName;
+      
       socket.to(roomId).emit("cursor-move", {
         userId: socket.id,
+        userName, // Include userName from stored user info
         x,
         y,
         color,
@@ -222,6 +242,7 @@ export default function registerSocketHandlers(io: Server) {
       
       // Clean up user tracking
       userRooms.delete(socket.id);
+      userInfo.delete(socket.id); // Clean up global user info
     });
 
     function handleUserLeave(socket: Socket, roomId: string) {
@@ -229,6 +250,7 @@ export default function registerSocketHandlers(io: Server) {
       
       if (rooms[roomId]) {
         rooms[roomId].users.delete(socket.id);
+        rooms[roomId].userInfo.delete(socket.id); // Clean up room-specific user info
         
         socket.to(roomId).emit("user-left", {
           userId: socket.id,

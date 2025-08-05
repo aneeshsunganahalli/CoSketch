@@ -164,7 +164,7 @@ const RemoteCursors: React.FC<RemoteCursorsProps> = ({ cursors, containerRef }) 
                     {getCursorIcon(cursor.tool)}
                   </div>
                   <span className="text-white/95 font-mono text-xs">
-                    {cursor.userName || `User_${cursor.userId.slice(0, 4)}`}
+                    {cursor.userName || `Guest_${cursor.userId.slice(0, 4)}`}
                   </span>
                 </div>
                 
