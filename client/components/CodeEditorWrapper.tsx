@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, forwardRef } from 'react';
 import { CodeEditor } from './CodeEditor';
 import { CollaborativeCodeEditor } from './CollaborativeCodeEditor';
 
@@ -10,11 +10,11 @@ interface CodeEditorWrapperProps {
   socketInstance?: any; // Accept shared socket instance
 }
 
-export const CodeEditorWrapper: React.FC<CodeEditorWrapperProps> = ({ 
+export const CodeEditorWrapper = forwardRef<any, CodeEditorWrapperProps>(({ 
   roomId, 
   isCollaborative = false,
   socketInstance // Receive shared socket instance
-}) => {
+}, ref) => {
   const [code, setCode] = useState('');
   const [language, setLanguage] = useState('javascript');
 
@@ -31,6 +31,7 @@ export const CodeEditorWrapper: React.FC<CodeEditorWrapperProps> = ({
         
         <div className="h-[calc(100vh-8rem)]">
           <CollaborativeCodeEditor
+            ref={ref}
             roomId={roomId}
             initialLanguage={language}
             socketInstance={socketInstance} // Pass shared socket instance
@@ -82,4 +83,6 @@ export const CodeEditorWrapper: React.FC<CodeEditorWrapperProps> = ({
       </div>
     </div>
   );
-};
+});
+
+CodeEditorWrapper.displayName = 'CodeEditorWrapper';

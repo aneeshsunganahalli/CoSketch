@@ -27,6 +27,8 @@ interface RoomData {
     userInfo: Map<string, { socketId: string; userName?: string; isAuthenticated?: boolean }>; // Track user details
     canvasState?: string;
     boardData?: any[];
+    lastActivity?: number; // Track when room was last active
+    codeEditorState?: string; // Track code editor content
   };
 }
 
@@ -43,10 +45,25 @@ interface BoardMessage {
   timestamp?: number;
 }
 
+// Enhanced persistence with better cleanup and state management
+const ROOM_CLEANUP_INTERVAL = 1000 * 60 * 60; // 1 hour
+const ROOM_TIMEOUT = 1000 * 60 * 60 * 24; // 24 hours of inactivity before cleanup
+
 export default function registerSocketHandlers(io: Server) {
   const rooms: RoomData = {};
   const userRooms = new Map<string, string>(); // Track which room each user is in
   const userInfo = new Map<string, { userName?: string; isAuthenticated?: boolean }>(); // Track user info globally
+
+  // Periodic cleanup of inactive rooms
+  setInterval(() => {
+    const now = Date.now();
+    for (const [roomId, room] of Object.entries(rooms)) {
+      if (room.lastActivity && (now - room.lastActivity) > ROOM_TIMEOUT) {
+        console.log(`🧹 Cleaning up inactive room: ${roomId}`);
+        delete rooms[roomId];
+      }
+    }
+  }, ROOM_CLEANUP_INTERVAL);
 
   // Setup Yjs handlers for code editor collaboration
   setupYjsHandlers(io);
@@ -77,9 +94,14 @@ export default function registerSocketHandlers(io: Server) {
         rooms[roomId] = { 
           users: new Set(),
           userInfo: new Map(),
-          boardData: []
+          boardData: [],
+          lastActivity: Date.now(),
+          codeEditorState: ""
         };
       }
+      
+      // Update room activity
+      rooms[roomId].lastActivity = Date.now();
       
       // Store user info in room
       rooms[roomId].users.add(socket.id);
@@ -223,8 +245,28 @@ export default function registerSocketHandlers(io: Server) {
       if (rooms[roomId]) {
         rooms[roomId].canvasState = undefined;
         rooms[roomId].boardData = []; // Clear board data
+        rooms[roomId].lastActivity = Date.now();
       }
       socket.to(roomId).emit("clear-canvas", { userId: socket.id });
+    });
+
+    // Code editor state persistence
+    socket.on("save-code-state", ({ roomId, code }: { roomId: string; code: string }) => {
+      if (rooms[roomId]) {
+        rooms[roomId].codeEditorState = code;
+        rooms[roomId].lastActivity = Date.now();
+        console.log(`💾 Saved code editor state for room: ${roomId}`);
+      }
+    });
+
+    socket.on("get-code-state", ({ roomId }: { roomId: string }) => {
+      if (rooms[roomId] && rooms[roomId].codeEditorState) {
+        socket.emit("code-state", { 
+          roomId, 
+          code: rooms[roomId].codeEditorState 
+        });
+        console.log(`📤 Sent code editor state for room: ${roomId}`);
+      }
     });
 
     socket.on("leave-room", (roomId: string) => {

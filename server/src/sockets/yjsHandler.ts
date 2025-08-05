@@ -4,10 +4,26 @@ import * as Y from "yjs";
 interface YjsRoom {
   doc: Y.Doc;
   userCount: number;
+  lastActivity: number; // Track activity for cleanup
 }
 
 // Store Yjs documents for each room
 const yjsRooms = new Map<string, YjsRoom>();
+
+// Cleanup inactive Yjs rooms periodically
+const CLEANUP_INTERVAL = 1000 * 60 * 60; // 1 hour
+const ROOM_TIMEOUT = 1000 * 60 * 60 * 24; // 24 hours
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [roomId, room] of yjsRooms.entries()) {
+    if ((now - room.lastActivity) > ROOM_TIMEOUT) {
+      console.log(`🧹 Cleaning up inactive Yjs room: ${roomId}`);
+      room.doc.destroy();
+      yjsRooms.delete(roomId);
+    }
+  }
+}, CLEANUP_INTERVAL);
 
 export function setupYjsHandlers(io: Server) {
   io.on("connection", (socket: Socket) => {
@@ -21,12 +37,14 @@ export function setupYjsHandlers(io: Server) {
       if (!yjsRooms.has(roomId)) {
         yjsRooms.set(roomId, {
           doc: new Y.Doc(),
-          userCount: 0
+          userCount: 0,
+          lastActivity: Date.now()
         });
       }
       
       const room = yjsRooms.get(roomId)!;
       room.userCount++;
+      room.lastActivity = Date.now(); // Update activity
       
       // Send the current state of the document to the new user
       const state = Y.encodeStateAsUpdate(room.doc);
@@ -40,6 +58,9 @@ export function setupYjsHandlers(io: Server) {
       if (!room) return;
 
       try {
+        // Update activity
+        room.lastActivity = Date.now();
+        
         // Apply the update to the document
         Y.applyUpdate(room.doc, new Uint8Array(update));
         

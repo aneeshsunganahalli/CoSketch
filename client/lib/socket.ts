@@ -166,6 +166,17 @@ class SocketService {
     });
   }
 
+  // Code editor state methods
+  saveCodeState(code: string) {
+    if (!this.socket || !this.roomId) return;
+    this.socket.emit('save-code-state', { roomId: this.roomId, code });
+  }
+
+  requestCodeState() {
+    if (!this.socket || !this.roomId) return;
+    this.socket.emit('get-code-state', { roomId: this.roomId });
+  }
+
   // Event listeners
   onBroadcast(callback: (data: BroadcastMessage) => void) {
     this.socket?.on('broadcast', callback);
@@ -200,6 +211,10 @@ class SocketService {
 
   onRoomUsers(callback: (data: RoomUsersEvent) => void) {
     this.socket?.on('room-users', callback);
+  }
+
+  onCodeState(callback: (data: { roomId: string; code: string }) => void) {
+    this.socket?.on('code-state', callback);
   }
 
   // Remove event listeners

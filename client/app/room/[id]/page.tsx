@@ -8,6 +8,7 @@ import { useSocket } from "@/hooks/useSocket";
 import { useAuth } from "@/contexts/AuthContext";
 import React, { useState, useEffect, useRef } from "react";
 import { DrawData, BroadcastMessage, UserJoinedEvent, UserLeftEvent, RoomUsersEvent, CursorMoveEvent } from "@/types/socket.types";
+import { roomPersistence } from "@/lib/roomPersistence";
 
 const Room = () => {
   const { id } = useParams();
@@ -19,6 +20,55 @@ const Room = () => {
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const [activeTab, setActiveTab] = useState<'whiteboard' | 'code'>('whiteboard');
   const whiteboardRef = useRef<any>(null);
+  const codeEditorRef = useRef<any>(null);
+
+  // Save state periodically and on tab changes
+  useEffect(() => {
+    const saveCurrentState = () => {
+      // Save whiteboard state if available
+      if (whiteboardRef.current?.getCanvasState && activeTab === 'whiteboard') {
+        try {
+          const canvasState = whiteboardRef.current.getCanvasState();
+          roomPersistence.saveWhiteboardState(roomId, {
+            canvasState: JSON.stringify(canvasState),
+            timestamp: Date.now()
+          });
+        } catch (error) {
+          console.warn('Could not save whiteboard state:', error);
+        }
+      }
+    };
+
+    // Save state every 30 seconds
+    const interval = setInterval(saveCurrentState, 30000);
+    
+    // Save state when tab becomes hidden (user navigating away/refreshing)
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        saveCurrentState();
+      }
+    };
+
+    // Save state before page unload
+    const handleBeforeUnload = () => {
+      saveCurrentState();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      saveCurrentState(); // Save on component unmount
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [roomId, activeTab]);
+
+  // Cleanup old localStorage data on mount
+  useEffect(() => {
+    roomPersistence.cleanup();
+  }, []);
 
   const { 
     isConnected, 
@@ -52,6 +102,23 @@ const Room = () => {
     onRoomUsers: (data: RoomUsersEvent) => {
       console.log('Room users:', data);
       setUserCount(data.userCount);
+      
+      // On initial room join/rejoin, try to restore local state if no server state exists
+      setTimeout(() => {
+        const localWhiteboardState = roomPersistence.getWhiteboardState(roomId);
+        if (localWhiteboardState && whiteboardRef.current?.loadBoardData) {
+          console.log('🔄 Restoring whiteboard state from localStorage');
+          // Only restore if we haven't received server state
+          if (whiteboardRef.current.isEmpty && whiteboardRef.current.isEmpty()) {
+            try {
+              const canvasData = JSON.parse(localWhiteboardState.canvasState || '{}');
+              whiteboardRef.current.loadFromJSON(canvasData);
+            } catch (error) {
+              console.warn('Could not restore whiteboard state:', error);
+            }
+          }
+        }
+      }, 1000);
     },
     onBroadcast: (data: BroadcastMessage) => {
       console.log('Room received broadcast:', data);
@@ -340,6 +407,7 @@ const Room = () => {
         {/* Code Editor - Always mounted, visibility controlled by CSS */}
         <div className={`h-full ${activeTab === 'code' ? 'block' : 'hidden'}`}>
           <CodeEditorWrapper 
+            ref={codeEditorRef}
             roomId={roomId} 
             isCollaborative={true}
             socketInstance={socketInstance} // Pass shared socket instance

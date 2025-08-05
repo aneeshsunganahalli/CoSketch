@@ -77,6 +77,27 @@ export const useWhiteboard = (socketService?: any) => {
     document.body.removeChild(link);
   }, []);
 
+  const getCanvasState = useCallback(() => {
+    if (!fabricRef.current) return null;
+    return fabricRef.current.toJSON();
+  }, []);
+
+  const loadFromJSON = useCallback((jsonData: any) => {
+    if (!fabricRef.current || !jsonData) return;
+    
+    setIsUpdatingFromHistory(true);
+    fabricRef.current.loadFromJSON(jsonData, () => {
+      fabricRef.current?.renderAll();
+      setIsUpdatingFromHistory(false);
+      console.log('✅ Canvas state restored from JSON');
+    });
+  }, []);
+
+  const isEmpty = useCallback(() => {
+    if (!fabricRef.current) return true;
+    return fabricRef.current.getObjects().length === 0;
+  }, []);
+
   const addText = useCallback((pointer: Point) => {
     if (!fabricRef.current) return;
 
@@ -157,6 +178,9 @@ export const useWhiteboard = (socketService?: any) => {
     fitToScreen,
     clearCanvas,
     exportCanvas,
+    getCanvasState,
+    loadFromJSON,
+    isEmpty,
     addText,
     updateToolSettings,
     getCursor,

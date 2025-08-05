@@ -62,7 +62,10 @@ const MiroWhiteboard = forwardRef<any, WhiteboardProps>(({ className = '', roomI
     handleRemoteCursor: socket.handleRemoteCursor,
     loadBoardData: socket.loadExistingBoardData,
     handleRemoteClear: socket.handleRemoteClear,
-    syncCanvas: socket.syncCanvasState
+    syncCanvas: socket.syncCanvasState,
+    getCanvasState: whiteboard.getCanvasState,
+    loadFromJSON: whiteboard.loadFromJSON,
+    isEmpty: whiteboard.isEmpty
   }));
 
   return (

@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useImperativeHandle } from 'react';
 import dynamic from 'next/dynamic';
 import { useCodeEditorSettings } from '../hooks/code-editor/useCodeEditorSettings';
 import { useYjsMonaco } from '../hooks/code-editor/useYjsMonaco';
 import { CodeEditorRef } from '../types/code.types';
 import { LANGUAGE_TEMPLATES } from '../lib/editorConstants';
+import { roomPersistence } from '../lib/roomPersistence';
 import type { editor } from 'monaco-editor';
 
 // Dynamic import to avoid SSR issues
@@ -38,7 +39,7 @@ interface CollaborativeCodeEditorProps {
   isConnected?: boolean;
 }
 
-export const CollaborativeCodeEditor: React.FC<CollaborativeCodeEditorProps> = ({
+export const CollaborativeCodeEditor = React.forwardRef<any, CollaborativeCodeEditorProps>(({
   roomId,
   initialLanguage = 'javascript',
   initialTheme = 'vs-dark',
@@ -50,13 +51,27 @@ export const CollaborativeCodeEditor: React.FC<CollaborativeCodeEditorProps> = (
   readOnly = false,
   collaborators = 0,
   isConnected = true,
-}) => {
+}, ref) => {
   const editorRef = useRef<CodeEditorRef>(null);
   const monacoEditorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const [code, setCode] = useState('');
   const [cursorPosition, setCursorPosition] = useState<{ line: number; column: number }>({ line: 1, column: 1 });
   const [stats, setStats] = useState({ lineCount: 0, characterCount: 0 });
   const [isLoaded, setIsLoaded] = useState(false);
+  // Track if we've tried to restore state
+  const [hasRestoredState, setHasRestoredState] = useState(false);
+
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    getContent: () => monacoEditorRef.current?.getValue() || '',
+    setContent: (content: string) => {
+      if (monacoEditorRef.current) {
+        monacoEditorRef.current.setValue(content);
+      }
+    },
+    getLanguage: () => language,
+    isEmpty: () => !monacoEditorRef.current?.getValue()?.trim()
+  }));
 
   const {
     language,
@@ -86,8 +101,37 @@ export const CollaborativeCodeEditor: React.FC<CollaborativeCodeEditorProps> = (
       const lines = content.split('\n').length;
       const characters = content.length;
       setStats({ lineCount: lines, characterCount: characters });
+      
+      // Save to localStorage periodically
+      if (content.trim()) {
+        roomPersistence.saveCodeState(roomId, {
+          content,
+          language,
+          timestamp: Date.now()
+        });
+      }
     }
   });
+
+  // Restore state on mount
+  useEffect(() => {
+    if (isReady && monacoEditorRef.current) {
+      // Try to restore from localStorage if editor is empty
+      const savedState = roomPersistence.getCodeState(roomId);
+      if (savedState && savedState.content && !monacoEditorRef.current.getValue().trim()) {
+        console.log('🔄 Restoring code editor state from localStorage');
+        // Small delay to ensure Yjs is ready
+        setTimeout(() => {
+          if (monacoEditorRef.current && !monacoEditorRef.current.getValue().trim()) {
+            monacoEditorRef.current.setValue(savedState.content || '');
+            if (savedState.language) {
+              handleLanguageChange(savedState.language);
+            }
+          }
+        }, 1000);
+      }
+    }
+  }, [isReady, roomId]);
 
   useEffect(() => {
     setIsLoaded(true);
@@ -249,7 +293,9 @@ export const CollaborativeCodeEditor: React.FC<CollaborativeCodeEditorProps> = (
       )}
     </div>
   );
-};
+});
+
+CollaborativeCodeEditor.displayName = 'CollaborativeCodeEditor';
 
 // Helper function to get file extension based on language
 function getFileExtension(language: string): string {
