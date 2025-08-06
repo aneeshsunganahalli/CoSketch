@@ -3,11 +3,15 @@ import { CODEMIRROR_LANGUAGES } from '../../lib/codemirrorLanguages';
 
 export const useCodeEditorSettings = () => {
   const [language, setLanguage] = useState('javascript');
-  const [theme] = useState<'dark'>('dark'); // Only dark theme
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [fontSize, setFontSize] = useState(14);
 
   const handleLanguageChange = useCallback((newLanguage: string) => {
     setLanguage(newLanguage);
+  }, []);
+
+  const handleThemeChange = useCallback((newTheme: 'light' | 'dark') => {
+    setTheme(newTheme);
   }, []);
 
   const handleFontSizeChange = useCallback((newFontSize: number) => {
@@ -18,6 +22,11 @@ export const useCodeEditorSettings = () => {
     return CODEMIRROR_LANGUAGES.find(lang => lang.value === language);
   }, [language]);
 
+  const themes = [
+    { value: 'light' as const, label: 'Light' },
+    { value: 'dark' as const, label: 'Dark' }
+  ];
+
   return {
     // State
     language,
@@ -26,6 +35,7 @@ export const useCodeEditorSettings = () => {
     
     // Actions
     handleLanguageChange,
+    handleThemeChange,
     handleFontSizeChange,
     
     // Helpers
@@ -33,5 +43,6 @@ export const useCodeEditorSettings = () => {
     
     // Constants
     supportedLanguages: CODEMIRROR_LANGUAGES,
+    themes,
   };
 };

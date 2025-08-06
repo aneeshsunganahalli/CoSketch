@@ -28,11 +28,6 @@ export const SUPPORTED_LANGUAGES: LanguageOption[] = [
   { value: 'plaintext', label: 'Plain Text', icon: '📄' },
 ];
 
-export const THEMES: ThemeOption[] = [
-  { value: 'vs-dark', label: 'Dark' },
-  { value: 'vs-light', label: 'Light' },
-  { value: 'hc-black', label: 'High Contrast' },
-];
 
 export const DEFAULT_EDITOR_OPTIONS = {
   minimap: { enabled: true },

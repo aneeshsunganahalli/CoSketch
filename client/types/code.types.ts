@@ -1,39 +1,35 @@
+// Types for CodeMirror-based editor components
 export interface CodeEditorProps {
   value?: string;
   language?: string;
-  theme?: 'vs-dark' | 'vs-light' | 'hc-black';
+  theme?: 'light' | 'dark';
   onChange?: (value: string) => void;
-  onMount?: (editor: any, monaco: any) => void;
+  onMount?: (view: any) => void; // CodeMirror EditorView
   readOnly?: boolean;
   height?: string | number;
   width?: string | number;
   className?: string;
-  minimap?: boolean;
-  wordWrap?: 'off' | 'on' | 'wordWrapColumn' | 'bounded';
   fontSize?: number;
-  tabSize?: number;
-  insertSpaces?: boolean;
-  automaticLayout?: boolean;
+  placeholder?: string;
+  extensions?: any[]; // CodeMirror Extensions
 }
 
 export interface CodeEditorRef {
-  editor: any;
-  monaco: any;
+  view: any; // CodeMirror EditorView
   getValue: () => string;
   setValue: (value: string) => void;
   focus: () => void;
-  formatDocument: () => void;
-  getSelection: () => any;
-  setSelection: (selection: any) => void;
+  getSelection: () => string;
 }
 
 export interface LanguageOption {
   value: string;
   label: string;
   icon?: string;
+  extension?: () => any; // CodeMirror Extension
 }
 
 export interface ThemeOption {
-  value: 'vs-dark' | 'vs-light' | 'hc-black';
+  value: 'light' | 'dark';
   label: string;
 }

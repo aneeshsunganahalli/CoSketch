@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, forwardRef } from 'react';
-import { CodeEditor } from './CodeEditor';
-import { CollaborativeCodeEditor } from './CollaborativeCodeEditor';
+import { SimpleCodeMirror } from './code-editor/SimpleCodeMirror';
+import { CollaborativeCodeMirror } from './code-editor/CollaborativeCodeMirror';
 
 interface CodeEditorWrapperProps {
   roomId?: string;
@@ -30,7 +30,7 @@ export const CodeEditorWrapper = forwardRef<any, CodeEditorWrapperProps>(({
         </div>
         
         <div className="h-[calc(100vh-8rem)]">
-          <CollaborativeCodeEditor
+          <CollaborativeCodeMirror
             ref={ref}
             roomId={roomId}
             initialLanguage={language}
@@ -48,7 +48,7 @@ export const CodeEditorWrapper = forwardRef<any, CodeEditorWrapperProps>(({
         <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-800 rounded text-sm">
           <p><strong>Room ID:</strong> {roomId}</p>
           <p><strong>Current Language:</strong> {language}</p>
-          <p><strong>Mode:</strong> Collaborative (Yjs CRDT)</p>
+          <p><strong>Mode:</strong> Collaborative (CodeMirror 6 + Yjs CRDT)</p>
         </div>
       </div>
     );
@@ -59,18 +59,18 @@ export const CodeEditorWrapper = forwardRef<any, CodeEditorWrapperProps>(({
       <div className="mb-4">
         <h1 className="text-2xl font-bold mb-2">Code Editor Demo</h1>
         <p className="text-gray-600 dark:text-gray-400">
-          A full-featured code editor with Monaco Editor, syntax highlighting, and collaborative features.
+          A full-featured code editor with CodeMirror 6, syntax highlighting, and modern features.
         </p>
       </div>
       
       <div className="h-[calc(100vh-8rem)]">
-        <CodeEditor
+        <SimpleCodeMirror
           initialLanguage={language}
           onChange={setCode}
           onLanguageChange={setLanguage}
           showToolbar={true}
           showStatusBar={true}
-          collaborators={2}
+          collaborators={0}
           isConnected={true}
           className="shadow-lg"
         />
@@ -80,6 +80,7 @@ export const CodeEditorWrapper = forwardRef<any, CodeEditorWrapperProps>(({
       <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-800 rounded text-sm">
         <p><strong>Current Language:</strong> {language}</p>
         <p><strong>Code Length:</strong> {code.length} characters</p>
+        <p><strong>Editor:</strong> CodeMirror 6</p>
       </div>
     </div>
   );
