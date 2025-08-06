@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { CODEMIRROR_LANGUAGES } from '../../lib/codemirrorLanguages';
+import { CODEMIRROR_LANGUAGES_ARRAY } from '../../lib/codemirrorLanguages';
 
 export const useCodeEditorSettings = () => {
   const [language, setLanguage] = useState('javascript');
@@ -19,7 +19,7 @@ export const useCodeEditorSettings = () => {
   }, []);
 
   const getLanguageInfo = useCallback(() => {
-    return CODEMIRROR_LANGUAGES.find(lang => lang.value === language);
+    return CODEMIRROR_LANGUAGES_ARRAY.find(lang => lang.value === language);
   }, [language]);
 
   const themes = [
@@ -42,7 +42,7 @@ export const useCodeEditorSettings = () => {
     getLanguageInfo,
     
     // Constants
-    supportedLanguages: CODEMIRROR_LANGUAGES,
+    supportedLanguages: CODEMIRROR_LANGUAGES_ARRAY,
     themes,
   };
 };

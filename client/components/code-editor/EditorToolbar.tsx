@@ -5,7 +5,10 @@ import {
   Play, 
   Download, 
   Copy, 
+  Settings, 
   Type, 
+  Palette, 
+  Map, 
   WrapText,
   Minus,
   Plus,
@@ -14,11 +17,16 @@ import {
 
 interface EditorToolbarProps {
   language: string;
+  theme: string;
   fontSize: number;
+  minimap: boolean;
   wordWrap: boolean;
   supportedLanguages: Array<{ value: string; label: string; icon?: string }>;
+  themes: Array<{ value: string; label: string }>;
   onLanguageChange: (language: string) => void;
+  onThemeChange: (theme: any) => void;
   onFontSizeChange: (fontSize: number) => void;
+  onMinimapToggle: () => void;
   onWordWrapToggle: () => void;
   onCopy?: () => void;
   onDownload?: () => void;
@@ -29,11 +37,16 @@ interface EditorToolbarProps {
 
 export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   language,
+  theme,
   fontSize,
+  minimap,
   wordWrap,
   supportedLanguages,
+  themes,
   onLanguageChange,
+  onThemeChange,
   onFontSizeChange,
+  onMinimapToggle,
   onWordWrapToggle,
   onCopy,
   onDownload,
@@ -43,7 +56,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
 }) => {
   return (
     <div className={`flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 ${className}`}>
-      {/* Left side - Language */}
+      {/* Left side - Language and Theme */}
       <div className="flex items-center space-x-3">
         {/* Language Selector */}
         <div className="flex items-center space-x-2">
@@ -56,6 +69,22 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
             {supportedLanguages.map((lang) => (
               <option key={lang.value} value={lang.value}>
                 {lang.icon} {lang.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Theme Selector */}
+        <div className="flex items-center space-x-2">
+          <Palette className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+          <select
+            value={theme}
+            onChange={(e) => onThemeChange(e.target.value)}
+            className="px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {themes.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
               </option>
             ))}
           </select>
@@ -82,6 +111,19 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
             <Plus className="w-3 h-3" />
           </button>
         </div>
+
+        {/* Minimap Toggle */}
+        <button
+          onClick={onMinimapToggle}
+          className={`p-2 rounded ${
+            minimap 
+              ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400' 
+              : 'hover:bg-gray-200 dark:hover:bg-gray-700'
+          }`}
+          title="Toggle minimap"
+        >
+          <Map className="w-4 h-4" />
+        </button>
 
         {/* Word Wrap Toggle */}
         <button

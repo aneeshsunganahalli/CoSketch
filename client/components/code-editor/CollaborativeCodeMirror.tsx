@@ -12,8 +12,10 @@ import { roomPersistence } from '@/lib/roomPersistence';
 interface CollaborativeCodeMirrorProps {
   roomId: string;
   initialLanguage?: string;
+  initialValue?: string;
   socketInstance?: any;
   onLanguageChange?: (language: string) => void;
+  onChange?: (content: string) => void;
   className?: string;
   showToolbar?: boolean;
   showStatusBar?: boolean;
@@ -27,13 +29,16 @@ export interface CollaborativeCodeMirrorRef {
   setContent: (content: string) => void;
   getLanguage: () => string;
   isEmpty: () => boolean;
+  saveState?: () => void;
 }
 
 export const CollaborativeCodeMirror = forwardRef<CollaborativeCodeMirrorRef, CollaborativeCodeMirrorProps>(({
   roomId,
   initialLanguage = 'javascript',
+  initialValue = '',
   socketInstance,
   onLanguageChange,
+  onChange,
   className = '',
   showToolbar = true,
   showStatusBar = true,
@@ -45,10 +50,12 @@ export const CollaborativeCodeMirror = forwardRef<CollaborativeCodeMirrorRef, Co
   const [language, setLanguage] = useState(initialLanguage);
   const theme = 'dark'; // Always dark theme
   const [fontSize, setFontSize] = useState(14);
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState(initialValue || LANGUAGE_TEMPLATES[initialLanguage] || LANGUAGE_TEMPLATES.default || '');
   const [cursorPosition, setCursorPosition] = useState<{ line: number; column: number }>({ line: 1, column: 1 });
   const [stats, setStats] = useState({ lineCount: 0, characterCount: 0 });
   const [isLoaded, setIsLoaded] = useState(false);
+  const [minimap, setMinimap] = useState(false);
+  const [wordWrap, setWordWrap] = useState(true);
 
   // Initialize collaborative features
   const { ydoc, ytext, isConnected: yjsConnected, userCount, collabExtension, isReady } = useCollaborativeCodeMirror({
@@ -56,12 +63,39 @@ export const CollaborativeCodeMirror = forwardRef<CollaborativeCodeMirrorRef, Co
     socketInstance
   });
 
+  // Create supported languages array
+  const supportedLanguages = Object.entries(CODEMIRROR_LANGUAGES).map(([value, label]) => ({
+    value,
+    label
+  }));
+
+  const themes = [{ value: 'dark', label: 'Dark' }];
+
+  // Save state function
+  const saveState = useCallback(() => {
+    if (typeof window === 'undefined' || !editorRef.current) return;
+    
+    try {
+      const content = editorRef.current.getValue();
+      if (content?.trim()) {
+        roomPersistence.saveCodeState(roomId, {
+          content,
+          language,
+          timestamp: Date.now()
+        });
+      }
+    } catch (error) {
+      console.warn('Failed to save code state:', error);
+    }
+  }, [roomId, language]);
+
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
     getContent: () => editorRef.current?.getValue() || '',
     setContent: (content: string) => editorRef.current?.setValue(content),
     getLanguage: () => language,
-    isEmpty: () => !editorRef.current?.getValue()?.trim()
+    isEmpty: () => !editorRef.current?.getValue()?.trim(),
+    saveState
   }));
 
   useEffect(() => {
@@ -73,25 +107,51 @@ export const CollaborativeCodeMirror = forwardRef<CollaborativeCodeMirrorRef, Co
     setLanguage(initialLanguage);
   }, [initialLanguage]);
 
-  // Restore state on mount
+  // Update code when initialValue changes (for persistence) - improved
   useEffect(() => {
-    if (isReady && editorRef.current && ytext) {
-      // Try to restore from localStorage if editor is empty
-      const savedState = roomPersistence.getCodeState(roomId);
-      if (savedState && savedState.content && !ytext.toString().trim()) {
-        console.log('🔄 Restoring code editor state from localStorage');
-        // Small delay to ensure Yjs is ready
-        setTimeout(() => {
-          if (ytext && !ytext.toString().trim()) {
-            ytext.insert(0, savedState.content || '');
-            if (savedState.language) {
-              setLanguage(savedState.language);
-            }
-          }
-        }, 1000);
-      }
+    if (!initialValue || !ytext || initialValue === code) return;
+    
+    const currentContent = ytext.toString();
+    // Only set initial value if Yjs document is empty and we have content to set
+    if (!currentContent.trim() && initialValue.trim()) {
+      console.log('🔄 Setting initial code from persistence into empty Yjs document');
+      setCode(initialValue);
+      // Insert into Yjs document immediately since it's empty
+      ytext.insert(0, initialValue);
     }
-  }, [isReady, roomId, ytext]);
+  }, [initialValue, ytext, code]);
+
+  // Restore state on mount - improved timing
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isReady || !editorRef.current || !ytext) return;
+    
+    // Wait a bit longer for any remote content to sync first
+    const restoreTimer = setTimeout(() => {
+      try {
+        const currentContent = ytext.toString();
+        const savedState = roomPersistence.getCodeState(roomId);
+        
+        // Only restore from localStorage if:
+        // 1. We have saved state
+        // 2. Current Yjs document is empty (no remote content)
+        // 3. Saved content is not empty
+        if (savedState && savedState.content && !currentContent.trim() && savedState.content.trim()) {
+          console.log('🔄 Restoring code editor state from localStorage (no remote content found)');
+          ytext.insert(0, savedState.content);
+          if (savedState.language && savedState.language !== language) {
+            setLanguage(savedState.language);
+            onLanguageChange?.(savedState.language);
+          }
+        } else if (currentContent.trim()) {
+          console.log('📡 Remote content found, skipping localStorage restoration');
+        }
+      } catch (error) {
+        console.warn('Failed to restore code editor state:', error);
+      }
+    }, 2000); // Increased delay to wait for remote sync
+
+    return () => clearTimeout(restoreTimer);
+  }, [isReady, roomId, ytext, language, onLanguageChange]);
 
   const handleLanguageChange = useCallback((newLanguage: string) => {
     setLanguage(newLanguage);
@@ -101,21 +161,26 @@ export const CollaborativeCodeMirror = forwardRef<CollaborativeCodeMirrorRef, Co
 
   const handleCodeChange = useCallback((newCode: string) => {
     setCode(newCode);
+    onChange?.(newCode);
     
     // Update stats
     const lines = newCode.split('\n').length;
     const characters = newCode.length;
     setStats({ lineCount: lines, characterCount: characters });
     
-    // Save to localStorage periodically
-    if (newCode.trim()) {
-      roomPersistence.saveCodeState(roomId, {
-        content: newCode,
-        language,
-        timestamp: Date.now()
-      });
+    // Save to localStorage periodically (client-side only)
+    if (typeof window !== 'undefined' && newCode.trim()) {
+      try {
+        roomPersistence.saveCodeState(roomId, {
+          content: newCode,
+          language,
+          timestamp: Date.now()
+        });
+      } catch (error) {
+        console.warn('Failed to auto-save code state:', error);
+      }
     }
-  }, [roomId, language]);
+  }, [roomId, language, onChange]);
 
   const handleEditorMount = useCallback((view: EditorView) => {
     console.log('📝 CodeMirror editor mounted for collaborative editing');
@@ -149,16 +214,21 @@ export const CollaborativeCodeMirror = forwardRef<CollaborativeCodeMirrorRef, Co
     console.log('💾 Code downloaded');
   }, [code, language, roomId]);
 
-  const handleReset = useCallback(() => {
-    const template = LANGUAGE_TEMPLATES[language] || '';
-    editorRef.current?.setValue(template);
-    console.log('🔄 Editor reset to template');
-  }, [language]);
-
   const handleRun = useCallback(() => {
-    console.log('▶️ Running code:', code);
-    // Placeholder for code execution
-  }, [code]);
+    console.log('🏃 Run button clicked - code execution not implemented yet');
+    // TODO: Implement code execution in a sandboxed environment
+  }, []);
+
+  const handleReset = useCallback(() => {
+    const template = LANGUAGE_TEMPLATES[language] || LANGUAGE_TEMPLATES.default || '';
+    if (ytext && editorRef.current) {
+      // Clear Yjs document
+      ytext.delete(0, ytext.length);
+      ytext.insert(0, template);
+      setCode(template);
+      console.log('🔄 Code editor reset to template');
+    }
+  }, [language, ytext]);
 
   const connectionStatusText = yjsConnected && isReady ? 'Connected' : 'Connecting...';
   const statusColor = yjsConnected && isReady ? 'text-green-600' : 'text-yellow-600';
@@ -179,11 +249,16 @@ export const CollaborativeCodeMirror = forwardRef<CollaborativeCodeMirrorRef, Co
       {showToolbar && (
         <EditorToolbar
           language={language}
+          theme={theme}
           fontSize={fontSize}
+          minimap={minimap}
           wordWrap={true} // Always enabled in our CodeMirror setup
-          supportedLanguages={CODEMIRROR_LANGUAGES}
+          supportedLanguages={supportedLanguages}
+          themes={themes}
           onLanguageChange={handleLanguageChange}
+          onThemeChange={() => {}} // No-op since we only support dark theme
           onFontSizeChange={setFontSize}
+          onMinimapToggle={() => setMinimap(!minimap)}
           onWordWrapToggle={() => {}} // No-op for CodeMirror
           onCopy={handleCopy}
           onDownload={handleDownload}

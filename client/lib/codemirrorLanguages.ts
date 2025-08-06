@@ -1,376 +1,176 @@
-import { Extension } from '@codemirror/state';
-import { javascript } from '@codemirror/lang-javascript';
-import { python } from '@codemirror/lang-python';
-import { html } from '@codemirror/lang-html';
-import { css } from '@codemirror/lang-css';
-import { json } from '@codemirror/lang-json';
-import { markdown } from '@codemirror/lang-markdown';
-import { xml } from '@codemirror/lang-xml';
+// Language configurations for CodeMirror
+export const CODEMIRROR_LANGUAGES = {
+  javascript: 'JavaScript',
+  typescript: 'TypeScript',
+  python: 'Python',
+  java: 'Java',
+  cpp: 'C++',
+  c: 'C',
+  csharp: 'C#',
+  php: 'PHP',
+  ruby: 'Ruby',
+  go: 'Go',
+  rust: 'Rust',
+  html: 'HTML',
+  css: 'CSS',
+  scss: 'SCSS',
+  json: 'JSON',
+  markdown: 'Markdown',
+  yaml: 'YAML',
+  xml: 'XML',
+  sql: 'SQL',
+  shell: 'Shell',
+};
 
-export interface LanguageOption {
-  value: string;
-  label: string;
-  icon?: string;
-  extension: () => Extension;
-}
-
-export const CODEMIRROR_LANGUAGES: LanguageOption[] = [
-  { 
-    value: 'javascript', 
-    label: 'JavaScript', 
-    icon: '🟨', 
-    extension: () => javascript({ jsx: false, typescript: false })
-  },
-  { 
-    value: 'typescript', 
-    label: 'TypeScript', 
-    icon: '🔷', 
-    extension: () => javascript({ jsx: false, typescript: true })
-  },
-  { 
-    value: 'jsx', 
-    label: 'React JSX', 
-    icon: '⚛️', 
-    extension: () => javascript({ jsx: true, typescript: false })
-  },
-  { 
-    value: 'tsx', 
-    label: 'React TSX', 
-    icon: '⚛️', 
-    extension: () => javascript({ jsx: true, typescript: true })
-  },
-  { 
-    value: 'python', 
-    label: 'Python', 
-    icon: '🐍', 
-    extension: () => python()
-  },
-  { 
-    value: 'html', 
-    label: 'HTML', 
-    icon: '🌐', 
-    extension: () => html()
-  },
-  { 
-    value: 'css', 
-    label: 'CSS', 
-    icon: '🎨', 
-    extension: () => css()
-  },
-  { 
-    value: 'json', 
-    label: 'JSON', 
-    icon: '📋', 
-    extension: () => json()
-  },
-  { 
-    value: 'markdown', 
-    label: 'Markdown', 
-    icon: '📝', 
-    extension: () => markdown()
-  },
-  { 
-    value: 'xml', 
-    label: 'XML', 
-    icon: '📄', 
-    extension: () => xml()
-  },
-  { 
-    value: 'plaintext', 
-    label: 'Plain Text', 
-    icon: '📄', 
-    extension: () => []
-  },
-];
+// Array version for components that expect an array format
+export const CODEMIRROR_LANGUAGES_ARRAY = Object.entries(CODEMIRROR_LANGUAGES).map(([value, label]) => ({
+  value,
+  label
+}));
 
 export const LANGUAGE_TEMPLATES: Record<string, string> = {
-  javascript: `// Welcome to JavaScript
-console.log('Hello, World!');
+  javascript: `// Welcome to the JavaScript Editor
+console.log("Hello, World!");
 
 function greet(name) {
   return \`Hello, \${name}!\`;
 }
 
-const message = greet('Developer');
-console.log(message);`,
-
-  typescript: `// Welcome to TypeScript
+greet("Developer");`,
+  
+  typescript: `// Welcome to the TypeScript Editor
 interface User {
-  id: number;
   name: string;
-  email: string;
-}
-
-function greet(user: User): string {
-  return \`Hello, \${user.name}!\`;
+  age: number;
 }
 
 const user: User = {
-  id: 1,
-  name: 'Developer',
-  email: 'dev@example.com'
+  name: "Developer",
+  age: 25
 };
 
-console.log(greet(user));`,
-
-  jsx: `// Welcome to React JSX
-import React, { useState } from 'react';
-
-function App() {
-  const [count, setCount] = useState(0);
-
-  return (
-    <div>
-      <h1>Hello, React!</h1>
-      <p>Count: {count}</p>
-      <button onClick={() => setCount(count + 1)}>
-        Increment
-      </button>
-    </div>
-  );
-}
-
-export default App;`,
-
-  tsx: `// Welcome to React TypeScript
-import React, { useState } from 'react';
-
-interface Props {
-  title: string;
-}
-
-const App: React.FC<Props> = ({ title }) => {
-  const [count, setCount] = useState<number>(0);
-
-  return (
-    <div>
-      <h1>{title}</h1>
-      <p>Count: {count}</p>
-      <button onClick={() => setCount(count + 1)}>
-        Increment
-      </button>
-    </div>
-  );
-};
-
-export default App;`,
-
-  python: `# Welcome to Python
+console.log(\`Hello, \${user.name}!\`);`,
+  
+  python: `# Welcome to the Python Editor
 def greet(name):
-    """Greet a person with their name."""
     return f"Hello, {name}!"
 
 def main():
-    name = "Developer"
-    message = greet(name)
-    print(message)
-    
-    # Example: Working with lists
-    numbers = [1, 2, 3, 4, 5]
-    squares = [x**2 for x in numbers]
-    print(f"Numbers: {numbers}")
-    print(f"Squares: {squares}")
+    print(greet("Developer"))
+    print("Welcome to CoSketch!")
 
 if __name__ == "__main__":
     main()`,
-
+  
+  java: `// Welcome to the Java Editor
+public class HelloWorld {
+    public static void main(String[] args) {
+        System.out.println("Hello, World!");
+        System.out.println("Welcome to CoSketch!");
+    }
+}`,
+  
   html: `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hello World</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-    </style>
+    <title>CoSketch</title>
 </head>
 <body>
-    <div class="container">
-        <h1>Hello, World!</h1>
-        <p>Welcome to HTML development.</p>
-        <button onclick="alert('Hello!')">Click me</button>
-    </div>
+    <h1>Hello, World!</h1>
+    <p>Welcome to CoSketch collaborative editor!</p>
 </body>
 </html>`,
+  
+  css: `/* Welcome to the CSS Editor */
+body {
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f5f5f5;
+}
 
-  css: `/* Welcome to CSS */
 .container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-  font-family: 'Arial', sans-serif;
+    max-width: 1200px;
+    margin: 0 auto;
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
-.header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 40px 20px;
-  text-align: center;
-  border-radius: 8px;
-  margin-bottom: 20px;
-}
-
-.card {
-  background: white;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease;
-}
-
-.card:hover {
-  transform: translateY(-2px);
-}
-
-@media (max-width: 768px) {
-  .container {
-    padding: 10px;
-  }
+h1 {
+    color: #2563eb;
+    text-align: center;
 }`,
-
+  
   json: `{
-  "name": "example-project",
+  "name": "CoSketch Project",
   "version": "1.0.0",
-  "description": "A sample JSON configuration",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
-    "test": "jest"
-  },
-  "dependencies": {
-    "express": "^4.18.0",
-    "mongoose": "^6.0.0"
-  },
-  "devDependencies": {
-    "nodemon": "^2.0.0",
-    "jest": "^27.0.0"
-  },
-  "keywords": ["javascript", "node", "express"],
-  "author": "Developer",
-  "license": "MIT"
+  "description": "Collaborative whiteboard and code editor",
+  "features": [
+    "Real-time collaboration",
+    "Multiple programming languages",
+    "Whiteboard drawing",
+    "Code persistence"
+  ],
+  "author": "CoSketch Team"
 }`,
+  
+  markdown: `# Welcome to CoSketch!
 
-  markdown: `# Welcome to Markdown
-
-This is a **comprehensive** example of Markdown syntax.
+CoSketch is a **collaborative platform** that combines:
 
 ## Features
 
-- Easy to write
-- Easy to read
-- *Widely supported*
+- 🎨 **Whiteboard**: Draw and sketch together
+- 💻 **Code Editor**: Write code collaboratively
+- 🔄 **Real-time Sync**: See changes instantly
+- 💾 **Auto-save**: Never lose your work
 
-### Code Examples
+## Getting Started
 
-Here's some inline \`code\` and a code block:
+1. Create or join a room
+2. Choose between whiteboard or code editor
+3. Start collaborating!
+
+> **Tip**: Your work is automatically saved and will persist across browser refreshes.
 
 \`\`\`javascript
-function greet(name) {
-  return \`Hello, \${name}!\`;
-}
-\`\`\`
+// Try editing this code!
+console.log("Hello, CoSketch!");
+\`\`\``,
+  
+  default: `// Welcome to CoSketch Code Editor
+// Your code will be automatically saved and synchronized across all collaborators
+// Choose a language from the toolbar above to get started!
 
-### Lists
-
-1. First item
-2. Second item
-3. Third item
-
-- Bullet point
-- Another point
-  - Nested point
-
-### Links and Images
-
-[Visit GitHub](https://github.com)
-
-### Tables
-
-| Feature | Support |
-|---------|---------|
-| Tables  | ✅ Yes  |
-| Lists   | ✅ Yes  |
-| Code    | ✅ Yes  |
-
-> This is a quote block with important information.
-
----
-
-**Happy writing!** 🚀`,
-
-  xml: `<?xml version="1.0" encoding="UTF-8"?>
-<catalog>
-    <book id="1">
-        <title>The Great Gatsby</title>
-        <author>F. Scott Fitzgerald</author>
-        <genre>Fiction</genre>
-        <price currency="USD">12.99</price>
-        <publication>
-            <year>1925</year>
-            <publisher>Scribner</publisher>
-        </publication>
-        <description>
-            A classic American novel set in the Jazz Age.
-        </description>
-    </book>
-    
-    <book id="2">
-        <title>To Kill a Mockingbird</title>
-        <author>Harper Lee</author>
-        <genre>Fiction</genre>
-        <price currency="USD">13.99</price>
-        <publication>
-            <year>1960</year>
-            <publisher>J.B. Lippincott & Co.</publisher>
-        </publication>
-        <description>
-            A gripping tale of racial injustice and childhood innocence.
-        </description>
-    </book>
-</catalog>`,
-
-  plaintext: `Welcome to Plain Text
-
-This is a simple text editor without syntax highlighting.
-You can write any kind of text here:
-
-- Notes
-- Documentation
-- Simple text files
-- Configuration files
-
-Feel free to start typing!`
+console.log("Start coding...");`
 };
-
-export function getLanguageExtension(language: string): Extension {
-  const langConfig = CODEMIRROR_LANGUAGES.find(lang => lang.value === language);
-  return langConfig ? langConfig.extension() : [];
-}
 
 export function getFileExtension(language: string): string {
   const extensions: Record<string, string> = {
     javascript: 'js',
     typescript: 'ts',
-    jsx: 'jsx',
-    tsx: 'tsx',
     python: 'py',
+    java: 'java',
+    cpp: 'cpp',
+    c: 'c',
+    csharp: 'cs',
+    php: 'php',
+    ruby: 'rb',
+    go: 'go',
+    rust: 'rs',
     html: 'html',
     css: 'css',
+    scss: 'scss',
     json: 'json',
     markdown: 'md',
+    yaml: 'yml',
     xml: 'xml',
-    plaintext: 'txt'
+    sql: 'sql',
+    shell: 'sh',
   };
   
   return extensions[language] || 'txt';

@@ -2,7 +2,7 @@
 
 import Whiteboard from "@/components/WhiteBoard";
 import RoomLink from "@/components/room/RoomLink";
-import { CodeEditorWrapper } from "@/components/CodeEditorWrapper";
+import { CodeEditorWrapper } from "@/components/CodeMirror";
 import { useParams, useRouter } from "next/navigation";
 import { useSocket } from "@/hooks/useSocket";
 import { useAuth } from "@/contexts/AuthContext";
@@ -35,6 +35,15 @@ const Room = () => {
           });
         } catch (error) {
           console.warn('Could not save whiteboard state:', error);
+        }
+      }
+      
+      // Save code editor state if available
+      if (codeEditorRef.current?.saveState && activeTab === 'code') {
+        try {
+          codeEditorRef.current.saveState();
+        } catch (error) {
+          console.warn('Could not save code editor state:', error);
         }
       }
     };
@@ -411,6 +420,7 @@ const Room = () => {
             roomId={roomId} 
             isCollaborative={true}
             socketInstance={socketInstance} // Pass shared socket instance
+            userCount={userCount} // Pass actual user count
           />
         </div>
       </div>

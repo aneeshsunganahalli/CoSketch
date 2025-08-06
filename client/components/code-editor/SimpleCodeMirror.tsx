@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useRef, useState, useCallback, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { EditorView } from '@codemirror/view';
 import { CodeMirrorEditor, CodeMirrorRef } from './CodeMirrorEditor';
 import { EditorToolbar } from './EditorToolbar';
 import { EditorStatusBar } from './EditorStatusBar';
 import { CODEMIRROR_LANGUAGES, LANGUAGE_TEMPLATES, getFileExtension } from '@/lib/codemirrorLanguages';
+import { roomPersistence } from '@/lib/roomPersistence';
 
 interface SimpleCodeMirrorProps {
   initialValue?: string;
@@ -18,9 +19,16 @@ interface SimpleCodeMirrorProps {
   readOnly?: boolean;
   collaborators?: number;
   isConnected?: boolean;
+  roomId?: string; // Added for persistence
 }
 
-export const SimpleCodeMirror: React.FC<SimpleCodeMirrorProps> = ({
+export interface SimpleCodeMirrorRef {
+  getContent: () => string;
+  getLanguage: () => string;
+  saveState?: () => void;
+}
+
+export const SimpleCodeMirror = forwardRef<SimpleCodeMirrorRef, SimpleCodeMirrorProps>(({
   initialValue = '',
   initialLanguage = 'javascript',
   onChange,
@@ -31,14 +39,50 @@ export const SimpleCodeMirror: React.FC<SimpleCodeMirrorProps> = ({
   readOnly = false,
   collaborators = 0,
   isConnected = true,
-}) => {
+  roomId,
+}, ref) => {
   const editorRef = useRef<CodeMirrorRef>(null);
   const [language, setLanguage] = useState(initialLanguage);
   const theme = 'dark'; // Always dark theme
   const [fontSize, setFontSize] = useState(14);
-  const [code, setCode] = useState(initialValue || LANGUAGE_TEMPLATES[initialLanguage] || '');
+  const [code, setCode] = useState(initialValue || LANGUAGE_TEMPLATES[initialLanguage] || LANGUAGE_TEMPLATES.default || '');
   const [cursorPosition, setCursorPosition] = useState<{ line: number; column: number }>({ line: 1, column: 1 });
   const [stats, setStats] = useState({ lineCount: 0, characterCount: 0 });
+  const [minimap, setMinimap] = useState(false);
+  const [wordWrap, setWordWrap] = useState(true);
+
+  // Create supported languages array
+  const supportedLanguages = Object.entries(CODEMIRROR_LANGUAGES).map(([value, label]) => ({
+    value,
+    label
+  }));
+
+  const themes = [{ value: 'dark', label: 'Dark' }];
+
+  // Save state function
+  const saveState = useCallback(() => {
+    if (typeof window === 'undefined' || !roomId || !editorRef.current) return;
+    
+    try {
+      const content = editorRef.current.getValue();
+      if (content?.trim()) {
+        roomPersistence.saveCodeState(roomId, {
+          content,
+          language,
+          timestamp: Date.now()
+        });
+      }
+    } catch (error) {
+      console.warn('Failed to save code state:', error);
+    }
+  }, [roomId, language]);
+
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    getContent: () => editorRef.current?.getValue() || '',
+    getLanguage: () => language,
+    saveState
+  }));
 
   // Initialize with props
   useEffect(() => {
@@ -117,11 +161,16 @@ export const SimpleCodeMirror: React.FC<SimpleCodeMirrorProps> = ({
       {showToolbar && (
         <EditorToolbar
           language={language}
+          theme={theme}
           fontSize={fontSize}
+          minimap={minimap}
           wordWrap={true} // Always enabled in our CodeMirror setup
-          supportedLanguages={CODEMIRROR_LANGUAGES}
+          supportedLanguages={supportedLanguages}
+          themes={themes}
           onLanguageChange={handleLanguageChange}
+          onThemeChange={() => {}} // No-op since we only support dark theme
           onFontSizeChange={setFontSize}
+          onMinimapToggle={() => setMinimap(!minimap)}
           onWordWrapToggle={() => {}} // No-op for CodeMirror
           onCopy={handleCopy}
           onDownload={handleDownload}
@@ -156,4 +205,6 @@ export const SimpleCodeMirror: React.FC<SimpleCodeMirrorProps> = ({
       )}
     </div>
   );
-};
+});
+
+SimpleCodeMirror.displayName = 'SimpleCodeMirror';

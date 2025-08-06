@@ -4,8 +4,8 @@ import React, { useRef, useEffect, useImperativeHandle, forwardRef } from 'react
 import { EditorView, placeholder as placeholderExtension } from '@codemirror/view';
 import { EditorState, Extension } from '@codemirror/state';
 import { oneDark } from '@codemirror/theme-one-dark';
-import { getLanguageExtension } from '@/lib/codemirrorLanguages';
-import { customBasicSetup, combineExtensions } from '@/lib/codemirrorSetup';
+import { getFileExtension } from '@/lib/codemirrorLanguages';
+import { customBasicSetup, combineExtensions, getLanguageExtension } from '@/lib/codemirrorSetup';
 
 export interface CodeMirrorRef {
   view: EditorView | null;
