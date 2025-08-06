@@ -25,7 +25,7 @@ export default function Home() {
         </svg>
       ),
       title: "Vector Canvas Engine",
-      description: "High-performance HTML5 Canvas with infinite zoom, layer management, and optimized rendering pipeline."
+      description: "High-performance Fabric.js Canvas with infinite zoom, layer management, and optimized rendering pipeline."
     },
     {
       icon: (
@@ -118,7 +118,7 @@ export default function Home() {
 
             {/* Tech Stack */}
             <div className="text-center text-gray-500 mb-6">
-              <p className="text-sm font-mono">Built with TypeScript • Next.js • Socket.io • HTML5 Canvas</p>
+              <p className="text-sm font-mono">Built with TypeScript • Next.js • Socket.io • Fabric.js</p>
             </div>
 
             {/* Social Proof */}
