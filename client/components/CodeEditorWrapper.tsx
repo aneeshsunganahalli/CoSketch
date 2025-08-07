@@ -22,13 +22,6 @@ export const CodeEditorWrapper = forwardRef<any, CodeEditorWrapperProps>(({
   if (isCollaborative && roomId) {
     return (
       <div className="w-full h-screen p-4">
-        <div className="mb-4">
-          <h1 className="text-2xl font-bold mb-2">Collaborative Code Editor</h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Real-time collaborative code editing with Yjs CRDT. Changes are synchronized across all users in the room.
-          </p>
-        </div>
-        
         <div className="h-[calc(100vh-8rem)]">
           <CollaborativeCodeEditor
             ref={ref}

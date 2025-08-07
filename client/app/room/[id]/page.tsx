@@ -19,7 +19,7 @@ const Room = () => {
   
   const [userCount, setUserCount] = useState(1);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
-  const [activeTab, setActiveTab] = useState<'whiteboard' | 'code'>('whiteboard');
+  const [codeEditorMode, setCodeEditorMode] = useState<'mini' | 'fullscreen' | 'hidden'>('mini');
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const whiteboardRef = useRef<any>(null);
   const codeEditorRef = useRef<any>(null);
@@ -28,7 +28,7 @@ const Room = () => {
   useEffect(() => {
     const saveCurrentState = () => {
       // Save whiteboard state if available
-      if (whiteboardRef.current?.getCanvasState && activeTab === 'whiteboard') {
+      if (whiteboardRef.current?.getCanvasState) {
         try {
           const canvasState = whiteboardRef.current.getCanvasState();
           roomPersistence.saveWhiteboardState(roomId, {
@@ -65,7 +65,7 @@ const Room = () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [roomId, activeTab]);
+  }, [roomId]);
 
   // Cleanup old localStorage data on mount
   useEffect(() => {
@@ -302,6 +302,20 @@ const Room = () => {
 
           {/* User actions section */}
           <div className="flex items-center justify-between sm:justify-end space-x-3">
+            {/* Code Editor Button - positioned to the left of share button */}
+            {codeEditorMode === 'hidden' && (
+              <button
+                onClick={() => setCodeEditorMode('mini')}
+                className="flex items-center space-x-2 px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
+                title="Show Code Editor"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                </svg>
+                <span className="hidden sm:inline">Show Editor</span>
+              </button>
+            )}
+            
             <RoomLink roomId={roomId} />
             
             <div className="hidden lg:block h-6 w-px bg-gray-300"></div>
@@ -352,46 +366,13 @@ const Room = () => {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="flex">
-          <button
-            onClick={() => setActiveTab('whiteboard')}
-            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'whiteboard'
-                ? 'border-blue-500 text-blue-600 bg-blue-50'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            <div className="flex items-center space-x-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
-              <span>Whiteboard</span>
-            </div>
-          </button>
-          <button
-            onClick={() => setActiveTab('code')}
-            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'code'
-                ? 'border-blue-500 text-blue-600 bg-blue-50'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            <div className="flex items-center space-x-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-              </svg>
-              <span>Code Editor</span>
-            </div>
-          </button>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1">
-        {/* Whiteboard - Always mounted, visibility controlled by CSS */}
-        <div className={activeTab === 'whiteboard' ? 'block' : 'hidden'}>
+      {/* Content - Simple Overlay System (No Animations) */}
+      <div className="flex h-[calc(100vh-120px)] relative">
+        {/* Whiteboard Area */}
+        <div className={`${
+          codeEditorMode === 'fullscreen' ? 'w-0 overflow-hidden' : 
+          codeEditorMode === 'mini' ? 'flex-1' : 'w-full'
+        }`}>
           <Whiteboard 
             ref={whiteboardRef}
             roomId={roomId}
@@ -402,16 +383,83 @@ const Room = () => {
             }}
           />
         </div>
-        
-        {/* Code Editor - Always mounted, visibility controlled by CSS */}
-        <div className={`h-full ${activeTab === 'code' ? 'block' : 'hidden'}`}>
-          <CodeEditorWrapper 
-            ref={codeEditorRef}
-            roomId={roomId} 
-            isCollaborative={true}
-            socketInstance={socketInstance} // Pass shared socket instance
-          />
-        </div>
+
+        {/* Code Editor Overlay */}
+        {codeEditorMode !== 'hidden' && (
+          <div className={`bg-white border-l border-gray-200 ${
+            codeEditorMode === 'fullscreen' ? 'w-full' : 'w-[35%]'
+          }`}>
+            {/* Code Editor Header */}
+            <div className="bg-gray-50 border-b border-gray-200 px-4 py-2 flex justify-between items-center">
+              <h3 className="text-sm font-medium text-gray-700">Code Editor</h3>
+              <div className="flex items-center space-x-2">
+                {/* Minimize Button */}
+                {codeEditorMode === 'fullscreen' && (
+                  <button
+                    onClick={() => setCodeEditorMode('mini')}
+                    className="p-1 hover:bg-gray-200 rounded"
+                    title="Minimize Editor"
+                  >
+                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                    </svg>
+                  </button>
+                )}
+                
+                {/* Fullscreen Toggle */}
+                <button
+                  onClick={() => setCodeEditorMode(codeEditorMode === 'fullscreen' ? 'mini' : 'fullscreen')}
+                  className="p-1 hover:bg-gray-200 rounded"
+                  title={codeEditorMode === 'fullscreen' ? 'Exit Fullscreen' : 'Fullscreen Editor'}
+                >
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {codeEditorMode === 'fullscreen' ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.5 3.5M15 9V4.5M15 9h4.5M15 9l5.5-5.5M9 15v4.5M9 15H4.5M9 15l-5.5 5.5M15 15v4.5m0-4.5h4.5m-4.5 0l5.5 5.5" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                    )}
+                  </svg>
+                </button>
+
+                {/* Close Button */}
+                <button
+                  onClick={() => setCodeEditorMode('hidden')}
+                  className="p-1 hover:bg-gray-200 rounded"
+                  title="Hide Editor"
+                >
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  </button>
+              </div>
+            </div>
+
+            {/* Code Editor Content */}
+            <div className="h-[calc(100%-48px)]">
+              <CodeEditorWrapper 
+                ref={codeEditorRef}
+                roomId={roomId} 
+                isCollaborative={true}
+                socketInstance={socketInstance}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Floating Button for Hidden Editor */}
+        {codeEditorMode === 'hidden' && (
+          <div className="absolute bottom-6 right-6 z-10">
+            <button
+              onClick={() => setCodeEditorMode('mini')}
+              className="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg hover:scale-105"
+              title="Show Code Editor"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Leave Room Modal */}
