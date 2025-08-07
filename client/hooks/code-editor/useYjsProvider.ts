@@ -4,7 +4,7 @@ import { socketService } from '@/lib/socket';
 
 interface UseYjsProviderProps {
   roomId: string;
-  socketInstance?: any; // Accept existing socket instance
+  socketInstance?: any;
 }
 
 interface YjsProvider {
@@ -16,7 +16,7 @@ interface YjsProvider {
 
 export const useYjsProvider = ({ 
   roomId,
-  socketInstance // Use shared socket instance
+  socketInstance
 }: UseYjsProviderProps): YjsProvider => {
   const ydocRef = useRef<Y.Doc | null>(null);
   const ytextRef = useRef<Y.Text | null>(null);
@@ -51,9 +51,17 @@ export const useYjsProvider = ({
       setIsConnected(false);
     };
 
+    const handleUserCountUpdate = ({ roomId: updateRoomId, count }: { roomId: string; count: number }) => {
+      if (updateRoomId === roomId) {
+        setUserCount(count);
+        console.log(`👥 User count updated: ${count}`);
+      }
+    };
+
     // Set up event listeners
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
+    socket.on('user-count-update', handleUserCountUpdate);
 
     // If already connected, join room immediately
     if (socket.connected) {
@@ -84,6 +92,14 @@ export const useYjsProvider = ({
       }
     });
 
+    // Handle awareness updates from other clients
+    socket.on('yjs-awareness-update', ({ roomId: updateRoomId, userId, awarenessState }: { roomId: string; userId: string; awarenessState: any }) => {
+      if (updateRoomId === roomId) {
+        console.log('👁️ Received awareness update from user:', userId);
+        // The awareness will be handled by individual awareness instances in the Monaco hook
+      }
+    });
+
     // Listen for document updates and send them to the server
     const updateHandler = (update: Uint8Array, origin: any) => {
       // Don't send updates that originated from the server
@@ -110,8 +126,10 @@ export const useYjsProvider = ({
       ydoc.off('update', updateHandler);
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
+      socket.off('user-count-update', handleUserCountUpdate);
       socket.off('yjs-sync');
       socket.off('yjs-update');
+      socket.off('yjs-awareness-update');
       
       // Only destroy the document, don't disconnect the shared socket
       ydoc.destroy();

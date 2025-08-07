@@ -3,6 +3,7 @@
 import Whiteboard from "@/components/WhiteBoard";
 import RoomLink from "@/components/room/RoomLink";
 import { CodeEditorWrapper } from "@/components/CodeEditorWrapper";
+import LeaveRoomModal from "@/components/modals/LeaveRoomModal";
 import { useParams, useRouter } from "next/navigation";
 import { useSocket } from "@/hooks/useSocket";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,6 +20,7 @@ const Room = () => {
   const [userCount, setUserCount] = useState(1);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const [activeTab, setActiveTab] = useState<'whiteboard' | 'code'>('whiteboard');
+  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const whiteboardRef = useRef<any>(null);
   const codeEditorRef = useRef<any>(null);
 
@@ -202,6 +204,11 @@ const Room = () => {
     }
   };
 
+  const handleLeaveRoom = () => {
+    setIsLeaveModalOpen(false);
+    router.push('/');
+  };
+
   // Show loading state while auth is being checked
   if (loading) {
     return (
@@ -258,11 +265,7 @@ const Room = () => {
           
           {/* Mobile leave button */}
           <button
-            onClick={() => {
-              if (window.confirm('Are you sure you want to leave this room?')) {
-                router.push('/');
-              }
-            }}
+            onClick={() => setIsLeaveModalOpen(true)}
             className="lg:hidden flex items-center space-x-1 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200"
             title="Leave Room"
           >
@@ -336,11 +339,7 @@ const Room = () => {
             
             {/* Desktop leave room button */}
             <button
-              onClick={() => {
-                if (window.confirm('Are you sure you want to leave this room?')) {
-                  router.push('/');
-                }
-              }}
+              onClick={() => setIsLeaveModalOpen(true)}
               className="hidden lg:flex items-center space-x-1 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200"
               title="Leave Room"
             >
@@ -414,6 +413,14 @@ const Room = () => {
           />
         </div>
       </div>
+
+      {/* Leave Room Modal */}
+      <LeaveRoomModal
+        isOpen={isLeaveModalOpen}
+        onClose={() => setIsLeaveModalOpen(false)}
+        onConfirm={handleLeaveRoom}
+        roomId={roomId}
+      />
     </div>
   );
 };

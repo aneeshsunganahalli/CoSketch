@@ -25,6 +25,11 @@ const EditorStatusBar = dynamic(
   { ssr: false }
 );
 
+const MonacoRemoteCursors = dynamic(
+  () => import('./code-editor/MonacoRemoteCursors').then(mod => ({ default: mod.MonacoRemoteCursors })),
+  { ssr: false }
+);
+
 interface CollaborativeCodeEditorProps {
   roomId: string;
   initialLanguage?: string;
@@ -91,7 +96,7 @@ export const CollaborativeCodeEditor = React.forwardRef<any, CollaborativeCodeEd
   } = useCodeEditorSettings();
 
   // Initialize Yjs collaboration
-  const { isConnected: yjsConnected, isReady } = useYjsMonaco({
+  const { isConnected: yjsConnected, isReady, awareness } = useYjsMonaco({
     roomId,
     monacoEditor: monacoEditorRef.current,
     socketInstance, // Pass shared socket instance
@@ -263,7 +268,7 @@ export const CollaborativeCodeEditor = React.forwardRef<any, CollaborativeCodeEd
         </div>
       )}
 
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 relative">
         <MonacoEditorWrapper
           ref={editorRef}
           value={code}
@@ -279,6 +284,15 @@ export const CollaborativeCodeEditor = React.forwardRef<any, CollaborativeCodeEd
           height="100%"
           width="100%"
         />
+        
+        {/* Remote cursors overlay */}
+        {awareness && monacoEditorRef.current && (
+          <MonacoRemoteCursors
+            awareness={awareness}
+            monacoEditor={monacoEditorRef.current}
+            className="pointer-events-none"
+          />
+        )}
       </div>
 
       {showStatusBar && (
