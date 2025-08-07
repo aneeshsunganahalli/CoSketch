@@ -231,7 +231,7 @@ export const CollaborativeCodeEditor = React.forwardRef<any, CollaborativeCodeEd
   }
 
   return (
-    <div className={`flex flex-col h-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden ${className}`}>
+    <div className={`flex flex-col h-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden ${className}`} style={{ height: '100%', minHeight: '100%' }}>
       {showToolbar && (
         <EditorToolbar
           language={language}
@@ -268,29 +268,31 @@ export const CollaborativeCodeEditor = React.forwardRef<any, CollaborativeCodeEd
         </div>
       )}
 
-      <div className="flex-1 min-h-0 relative">
-        <MonacoEditorWrapper
-          ref={editorRef}
-          value={code}
-          language={language}
-          theme={theme}
-          onChange={() => {}} // Yjs handles changes
-          onMount={handleEditorMount}
-          readOnly={readOnly}
-          minimap={minimap}
-          wordWrap={wordWrap}
-          fontSize={fontSize}
-          tabSize={tabSize}
-          height="100%"
-          width="100%"
-        />
+      <div className="flex-1 min-h-0 relative" style={{ flex: '1 1 0%', minHeight: 0 }}>
+        <div className="absolute inset-0">
+          <MonacoEditorWrapper
+            ref={editorRef}
+            value={code}
+            language={language}
+            theme={theme}
+            onChange={() => {}} // Yjs handles changes
+            onMount={handleEditorMount}
+            readOnly={readOnly}
+            minimap={minimap}
+            wordWrap={wordWrap}
+            fontSize={fontSize}
+            tabSize={tabSize}
+            height="100%"
+            width="100%"
+          />
+        </div>
         
         {/* Remote cursors overlay */}
         {awareness && monacoEditorRef.current && (
           <MonacoRemoteCursors
             awareness={awareness}
             monacoEditor={monacoEditorRef.current}
-            className="pointer-events-none"
+            className="pointer-events-none absolute inset-0"
           />
         )}
       </div>

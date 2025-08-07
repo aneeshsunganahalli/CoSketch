@@ -367,7 +367,7 @@ const Room = () => {
       </div>
 
       {/* Content - Simple Overlay System (No Animations) */}
-      <div className="flex h-[calc(100vh-120px)] relative">
+      <div className="flex h-screen relative">
         {/* Whiteboard Area */}
         <div className={`${
           codeEditorMode === 'fullscreen' ? 'w-0 overflow-hidden' : 
@@ -384,13 +384,13 @@ const Room = () => {
           />
         </div>
 
-        {/* Code Editor Overlay */}
+        {/* Code Editor Overlay - Matches Whiteboard Height */}
         {codeEditorMode !== 'hidden' && (
-          <div className={`bg-white border-l border-gray-200 ${
+          <div className={`bg-white border-l border-gray-200 flex flex-col h-screen ${
             codeEditorMode === 'fullscreen' ? 'w-full' : 'w-[35%]'
           }`}>
             {/* Code Editor Header */}
-            <div className="bg-gray-50 border-b border-gray-200 px-4 py-2 flex justify-between items-center">
+            <div className="bg-gray-50 border-b border-gray-200 px-4 py-2 flex justify-between items-center flex-shrink-0">
               <h3 className="text-sm font-medium text-gray-700">Code Editor</h3>
               <div className="flex items-center space-x-2">
                 {/* Minimize Button */}
@@ -434,8 +434,8 @@ const Room = () => {
               </div>
             </div>
 
-            {/* Code Editor Content */}
-            <div className="h-[calc(100%-48px)]">
+            {/* Code Editor Content - Takes remaining height */}
+            <div className="flex-1 min-h-0">
               <CodeEditorWrapper 
                 ref={codeEditorRef}
                 roomId={roomId} 

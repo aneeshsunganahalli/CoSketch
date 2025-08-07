@@ -21,29 +21,18 @@ export const CodeEditorWrapper = forwardRef<any, CodeEditorWrapperProps>(({
   // Use collaborative editor if roomId is provided
   if (isCollaborative && roomId) {
     return (
-      <div className="w-full h-screen p-4">
-        <div className="h-[calc(100vh-8rem)]">
-          <CollaborativeCodeEditor
-            ref={ref}
-            roomId={roomId}
-            initialLanguage={language}
-            socketInstance={socketInstance} // Pass shared socket instance
-            onLanguageChange={setLanguage}
-            showToolbar={true}
-            showStatusBar={true}
-            collaborators={2}
-            isConnected={true}
-            className="shadow-lg"
-          />
-        </div>
-        
-        {/* Debug info */}
-        <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-800 rounded text-sm">
-          <p><strong>Room ID:</strong> {roomId}</p>
-          <p><strong>Current Language:</strong> {language}</p>
-          <p><strong>Mode:</strong> Collaborative (Yjs CRDT)</p>
-        </div>
-      </div>
+      <CollaborativeCodeEditor
+        ref={ref}
+        roomId={roomId}
+        initialLanguage={language}
+        socketInstance={socketInstance} // Pass shared socket instance
+        onLanguageChange={setLanguage}
+        showToolbar={true}
+        showStatusBar={true}
+        collaborators={2}
+        isConnected={true}
+        className="h-full"
+      />
     );
   }
 
