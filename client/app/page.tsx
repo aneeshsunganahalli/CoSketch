@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import AuthNav from "@/components/auth/AuthNav";
-import RoomActions from "@/components/room/RoomActions";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Home() {
@@ -77,12 +76,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center mr-2">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                </svg>
-              </div>
-              <span className="text-xl font-bold text-gray-900 font-mono">CoSketch</span>
+              <img src="/Logo2.png" alt="CoSketch" className="h-24 w-auto" />
             </div>
             <div className="flex items-center space-x-4">
               <AuthNav user={user} />
@@ -113,7 +107,9 @@ export default function Home() {
 
             {/* CTA Buttons */}
             <div className="mb-12">
-              <RoomActions user={user} className="max-w-md mx-auto" />
+              <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-lg transition-colors duration-200 text-lg shadow-lg hover:shadow-xl">
+                Start Collaborating
+              </button>
             </div>
 
             {/* Tech Stack */}
@@ -199,11 +195,13 @@ export default function Home() {
             Ready to enhance your team's workflow?
           </h3>
           <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-            Join development teams using CoSketch for system design, code reviews, and technical collaboration
+            Join development teams using our platform for system design, code reviews, and technical collaboration
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <div className="max-w-md mx-auto">
-              <RoomActions user={user} />
+              <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors duration-200 text-lg">
+                Get Started
+              </button>
             </div>
             <div className="text-gray-400 text-sm text-center sm:text-left">
               No installation required • Works in any modern browser
@@ -217,15 +215,10 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center mb-4 md:mb-0">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                </svg>
-              </div>
-              <span className="text-xl font-bold text-white font-mono">CoSketch</span>
+              <img src="/Logo2.png" alt="CoSketch" className="h-24 w-auto" />
             </div>
             <div className="text-gray-400 text-center md:text-right">
-              <p className="text-sm">© 2025 CoSketch. Built for developers, by developers.</p>
+              <p className="text-sm">© 2025 All rights reserved. Built for developers, by developers.</p>
               <p className="text-xs mt-1">Open source • Self-hostable • Developer-first</p>
             </div>
           </div>
