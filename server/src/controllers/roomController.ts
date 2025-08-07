@@ -1,6 +1,4 @@
 import { Response } from 'express';
-import mongoose from 'mongoose';
-import RoomModel, { IRoom } from '../models/room.model';
 import { AuthenticatedRequest } from '../types/room.types';
 
 // Generate a readable room ID
@@ -19,31 +17,11 @@ const generateRoomId = (): string => {
   return segments.join('-');
 };
 
-// Create a new room
+// Create a new room (generate room ID only, no database storage)
 const createRoom = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    let roomId: string;
-    let roomExists = true;
-    let attempts = 0;
-    const maxAttempts = 10;
-
-    // Generate a unique room ID
-    while (roomExists && attempts < maxAttempts) {
-      roomId = generateRoomId();
-      const existingRoom = await RoomModel.findOne({ roomId });
-      if (!existingRoom) {
-        roomExists = false;
-      }
-      attempts++;
-    }
-
-    if (roomExists) {
-      res.status(500).json({ 
-        success: false, 
-        message: "Unable to generate unique room ID. Please try again." 
-      });
-      return;
-    }
+    // Simply generate a unique room ID without checking database
+    const roomId = generateRoomId();
 
     // Get user info from request (could be authenticated user or guest)
     const user = req.user; // This will be set by auth middleware if user is logged in
@@ -57,33 +35,15 @@ const createRoom = async (req: AuthenticatedRequest, res: Response): Promise<voi
       creatorName = guestName || 'Guest';
     }
 
-    // Create room data
-    const roomData: Partial<IRoom> = {
-      roomId: roomId!,
-      createdBy: user ? new mongoose.Types.ObjectId(user.id) : undefined,
-      creatorName: creatorName,
-      isGuestRoom: !user,
-      createdAt: new Date(),
-      lastActivity: new Date(),
-      participants: [],
-      settings: {
-        isPublic: true, // For now, all rooms are public (joinable via link)
-        maxParticipants: 50,
-        allowGuests: true
-      }
-    };
-
-    const newRoom = new RoomModel(roomData);
-    const savedRoom = await newRoom.save();
-
+    // Return room info without saving to database
     res.status(201).json({
       success: true,
       room: {
-        roomId: savedRoom.roomId,
-        createdBy: savedRoom.createdBy,
-        creatorName: savedRoom.creatorName,
-        isGuestRoom: savedRoom.isGuestRoom,
-        createdAt: savedRoom.createdAt
+        roomId: roomId,
+        createdBy: user ? user.id : null,
+        creatorName: creatorName,
+        isGuestRoom: !user,
+        createdAt: new Date()
       }
     });
 
@@ -96,7 +56,7 @@ const createRoom = async (req: AuthenticatedRequest, res: Response): Promise<voi
   }
 };
 
-// Get room info
+// Get room info (rooms are now created dynamically, so any room ID is valid)
 const getRoomInfo = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { roomId } = req.params;
@@ -109,29 +69,21 @@ const getRoomInfo = async (req: AuthenticatedRequest, res: Response): Promise<vo
       return;
     }
 
-    const room = await RoomModel.findOne({ roomId: roomId.toUpperCase() });
-
-    if (!room) {
-      res.status(404).json({ 
-        success: false, 
-        message: "Room not found" 
-      });
-      return;
-    }
-
-    // Update last activity
-    room.lastActivity = new Date();
-    await room.save();
-
+    // Since rooms are now created dynamically when users join,
+    // any room ID is potentially valid
     res.status(200).json({
       success: true,
       room: {
-        roomId: room.roomId,
-        creatorName: room.creatorName,
-        isGuestRoom: room.isGuestRoom,
-        createdAt: room.createdAt,
-        participantCount: room.participants.length,
-        settings: room.settings
+        roomId: roomId.toUpperCase(),
+        creatorName: 'Unknown', // We don't track creators anymore
+        isGuestRoom: true, // All rooms are essentially guest rooms now
+        createdAt: new Date(), // Current time
+        participantCount: 0, // We don't track this in database anymore
+        settings: {
+          isPublic: true,
+          maxParticipants: 50,
+          allowGuests: true
+        }
       }
     });
 
@@ -144,7 +96,7 @@ const getRoomInfo = async (req: AuthenticatedRequest, res: Response): Promise<vo
   }
 };
 
-// Join a room
+// Join a room (rooms are now handled in-memory via sockets)
 const joinRoom = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { roomId } = req.params;
@@ -159,35 +111,8 @@ const joinRoom = async (req: AuthenticatedRequest, res: Response): Promise<void>
       return;
     }
 
-    const room = await RoomModel.findOne({ roomId: roomId.toUpperCase() });
-
-    if (!room) {
-      res.status(404).json({ 
-        success: false, 
-        message: "Room not found" 
-      });
-      return;
-    }
-
-    // Check if room allows guests (if user is not authenticated)
-    if (!user && !room.settings.allowGuests) {
-      res.status(403).json({ 
-        success: false, 
-        message: "This room requires authentication to join" 
-      });
-      return;
-    }
-
-    // Check max participants
-    if (room.participants.length >= room.settings.maxParticipants) {
-      res.status(403).json({ 
-        success: false, 
-        message: "Room is full" 
-      });
-      return;
-    }
-
-    // Prepare participant data
+    // Since rooms are handled in-memory, any room can be joined
+    // Prepare participant data for response
     const participantData = {
       id: user ? user.id : `guest-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: user ? user.name : (guestName || 'Guest'),
@@ -195,20 +120,12 @@ const joinRoom = async (req: AuthenticatedRequest, res: Response): Promise<void>
       joinedAt: new Date()
     };
 
-    // Add participant if not already in the room
-    const existingParticipant = room.participants.find(p => p.id === participantData.id);
-    if (!existingParticipant) {
-      room.participants.push(participantData);
-      room.lastActivity = new Date();
-      await room.save();
-    }
-
     res.status(200).json({
       success: true,
       participant: participantData,
       room: {
-        roomId: room.roomId,
-        participantCount: room.participants.length
+        roomId: roomId.toUpperCase(),
+        participantCount: 1 // We don't track this accurately in REST API anymore
       }
     });
 
@@ -221,7 +138,7 @@ const joinRoom = async (req: AuthenticatedRequest, res: Response): Promise<void>
   }
 };
 
-// Leave a room
+// Leave a room (rooms are now handled in-memory via sockets)
 const leaveRoom = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { roomId } = req.params;
@@ -235,25 +152,12 @@ const leaveRoom = async (req: AuthenticatedRequest, res: Response): Promise<void
       return;
     }
 
-    const room = await RoomModel.findOne({ roomId: roomId.toUpperCase() });
-
-    if (!room) {
-      res.status(404).json({ 
-        success: false, 
-        message: "Room not found" 
-      });
-      return;
-    }
-
-    // Remove participant
-    room.participants = room.participants.filter(p => p.id !== participantId);
-    room.lastActivity = new Date();
-    await room.save();
-
+    // Since rooms are handled in-memory, we just return success
+    // The actual leaving logic is handled by socket disconnection
     res.status(200).json({
       success: true,
       message: "Left room successfully",
-      participantCount: room.participants.length
+      participantCount: 0 // We don't track this accurately in REST API anymore
     });
 
   } catch (error: any) {

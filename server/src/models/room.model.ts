@@ -1,5 +1,9 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
+// NOTE: This room model is no longer used for active room storage.
+// Rooms are now handled in-memory via socket connections.
+// This model is kept for potential future use or migration purposes.
+
 export interface IParticipant {
   id: string;
   name: string;

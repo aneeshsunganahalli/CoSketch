@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import User from '../models/user.model';
-import Room from '../models/room.model';
 import { AuthenticatedRequest } from '../types/room.types';
 
 export const getProfile = async (req: AuthenticatedRequest, res: Response) => {
@@ -141,14 +140,7 @@ export const deleteAccount = async (req: AuthenticatedRequest, res: Response) =>
       return res.status(400).json({ message: 'Password is incorrect' });
     }
 
-    // Remove user from all rooms they participate in
-    await Room.updateMany(
-      { 'participants.id': user.id },
-      { $pull: { participants: { id: user.id } } }
-    );
-
-    // Delete rooms created by the user (optional - you might want to transfer ownership instead)
-    await Room.deleteMany({ createdBy: user.id });
+    // Note: Rooms are now handled in-memory only, no database cleanup needed
 
     // Delete the user account
     await User.findByIdAndDelete(user.id);
