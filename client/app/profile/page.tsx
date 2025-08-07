@@ -4,9 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import AuthNav from '@/components/auth/AuthNav';
+import { profileApi } from '@/lib/apiService';
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -42,25 +43,45 @@ export default function ProfilePage() {
         return;
       }
 
-      // TODO: Call API to update profile
-      // const result = await authApi.updateProfile(formData);
+      // Prepare the data to send
+      const updateData: any = {
+        name: formData.name,
+        email: formData.email,
+      };
+
+      // Add password fields only if user is changing password
+      if (formData.newPassword) {
+        if (!formData.currentPassword) {
+          setError('Current password is required to change password');
+          return;
+        }
+        updateData.currentPassword = formData.currentPassword;
+        updateData.newPassword = formData.newPassword;
+      }
+
+      // Call the API
+      const result = await profileApi.updateProfile(updateData);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setSuccess('Profile updated successfully!');
-      
-      // Clear password fields
-      setFormData(prev => ({
-        ...prev,
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      }));
+      if (result.success || result.message === 'Profile updated successfully') {
+        setSuccess('Profile updated successfully!');
+        
+        // Refresh user data to show changes immediately
+        await refreshUser();
+        
+        // Clear password fields
+        setFormData(prev => ({
+          ...prev,
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        }));
+      } else {
+        throw new Error(result.message || 'Failed to update profile');
+      }
       
     } catch (err: any) {
       console.error('Profile update error:', err);
-      setError(err.message || 'Failed to update profile');
+      setError(err.response?.data?.message || err.message || 'Failed to update profile');
     } finally {
       setLoading(false);
     }

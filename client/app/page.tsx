@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import AuthNav from "@/components/auth/AuthNav";
+import RoomActions from "@/components/room/RoomActions";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Home() {
@@ -107,9 +108,7 @@ export default function Home() {
 
             {/* CTA Buttons */}
             <div className="mb-12">
-              <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-lg transition-colors duration-200 text-lg shadow-lg hover:shadow-xl">
-                Start Collaborating
-              </button>
+              <RoomActions user={user} className="max-w-md mx-auto" />
             </div>
 
             {/* Tech Stack */}

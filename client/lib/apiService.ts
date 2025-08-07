@@ -62,3 +62,41 @@ export const roomApi = {
     return response.data;
   }
 };
+
+export const profileApi = {
+  // Get user profile
+  getProfile: async (): Promise<ApiResponse> => {
+    const response = await api.get('/api/profile');
+    return response.data;
+  },
+
+  // Update user profile
+  updateProfile: async (profileData: {
+    name: string;
+    email: string;
+    currentPassword?: string;
+    newPassword?: string;
+  }): Promise<ApiResponse> => {
+    const response = await api.put('/api/profile', profileData);
+    return response.data;
+  },
+
+  // Change password only
+  changePassword: async (passwordData: {
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+  }): Promise<ApiResponse> => {
+    const response = await api.put('/api/profile/password', passwordData);
+    return response.data;
+  },
+
+  // Delete account
+  deleteAccount: async (deleteData: {
+    password: string;
+    confirmDeletion: string;
+  }): Promise<ApiResponse> => {
+    const response = await api.delete('/api/profile', { data: deleteData });
+    return response.data;
+  }
+};
