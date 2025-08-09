@@ -84,9 +84,3 @@ CoSketch combines them, so your team can:
 - [ ] Replay mode for past sessions  
 
 ---
-
-## 📜 License
-
-This project is licensed under the [MIT License](LICENSE).
-
----
