@@ -35,9 +35,6 @@ CoSketch combines them, so your team can:
 - 🔒 **Identity & Roles**  
   Optional authentication for persistent identities and role-based permissions.
 
-- 💬 **In-App Chat**  
-  Keep discussions inside the session without jumping between tools.
-
 ---
 
 ## 🖼 How It Works
