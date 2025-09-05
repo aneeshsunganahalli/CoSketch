@@ -4,6 +4,8 @@
 It’s built for **brainstorming, teaching, interviewing, and remote teamwork** — letting you draw, sketch, and code together in one seamless experience.
 
 ---
+![Demo](https://github.com/aneeshsunganahalli/CoSketch/blob/v2/client/public/CoSketchDemo.png)
+---
 
 ## 🌟 Why CoSketch?
 
